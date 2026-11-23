@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Credit Voucher — Alhamd POS</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f4f5f7; font-size: 14px; }
+    .main { margin-left: 220px; }
+    .topbar { position: sticky; top: 0; z-index: 50; }
+    @media(max-width:768px){ .main{ margin-left:60px; } }
+
+    .voucher-card { max-width: 640px; margin: 0 auto; }
+
+    .search-wrap { position: relative; }
+    .search-results {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 20;
+      background: #fff; border: 1px solid #e2e5ea; border-top: none;
+      border-radius: 0 0 8px 8px; max-height: 260px; overflow-y: auto;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08); display: none;
+    }
+    .search-results.show { display: block; }
+    .search-item { padding: 10px 14px; cursor: pointer; border-bottom: 1px solid #f1f2f4; }
+    .search-item:last-child { border-bottom: none; }
+    .search-item:hover { background: #fff8ee; }
+    .search-item .name { font-weight: 600; color: #212529; }
+    .search-item .meta { font-size: 12px; color: #6c757d; }
+    .search-item .credit-tag { font-size: 11px; font-weight: 700; color: #dc3545; }
+
+    .selected-customer {
+      display: none;
+      border: 1px solid #f1d9ae; background: #fff8ee; border-radius: 10px;
+      padding: 14px 16px; margin-top: 10px;
+    }
+    .selected-customer.show { display: block; }
+    .selected-customer .cname { font-weight: 700; font-size: 15px; color: #212529; }
+    .selected-customer .cphone { font-size: 12px; color: #6c757d; }
+    .change-customer-btn { font-size: 12px; }
+
+    .stat-pill {
+      border-radius: 8px; padding: 8px 12px; text-align: center; flex: 1;
+    }
+    .stat-pill .label { font-size: 11px; text-transform: uppercase; color: #6c757d; font-weight: 600; }
+    .stat-pill .val { font-size: 16px; font-weight: 700; }
+
+    .method-toggle .btn { flex: 1; }
+    .method-toggle .btn.active-cash   { background:#d68910; border-color:#d68910; color:#fff; }
+    .method-toggle .btn.active-bank   { background:#0d6efd; border-color:#0d6efd; color:#fff; }
+
+    .preview-box {
+      border-radius: 10px; background: #f4f5f7; padding: 14px 16px; margin-top: 14px;
+      border-left: 4px solid #d68910;
+    }
+    .preview-row { display:flex; justify-content:space-between; font-size:13px; padding:3px 0; }
+    .preview-row.total { font-weight:700; border-top:1px dashed #ccc; margin-top:6px; padding-top:8px; }
+
+    #formSection, #successBox { display: none; }
+    #formSection.show, #successBox.show { display: block; }
+
+    .submit-btn { background:#d68910; border-color:#d68910; }
+    .submit-btn:hover { background:#b9740c; border-color:#b9740c; }
+    .submit-btn:disabled { opacity:0.6; }
+  </style>
+</head>
+<body>
+
+<%- include('../partials/sidebar') %>
+
+<main class="main">
+
+  <div class="topbar bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between shadow-sm">
+    <h2 class="fs-6 fw-semibold mb-0">🧾 Credit Voucher</h2>
+    <a href="/sales/credit" class="btn btn-outline-secondary btn-sm">← Back to Credit Sales</a>
+  </div>
+
+  <div class="p-4">
+    <div class="voucher-card">
+
+      <div class="card shadow-sm p-4">
+
+        <div id="errorBox" class="alert alert-danger py-2 small mb-3" style="display:none;"></div>
+
+        <%# ── STEP 1: CUSTOMER SEARCH ── %>
+        <div id="searchSection">
+          <label class="form-label fw-semibold small">Customer dhoondho (naam ya phone)</label>
+          <div class="search-wrap">
+            <input type="text" id="customerSearch" class="form-control"
+                   placeholder="Type customer ka naam ya phone number..." autocomplete="off">
+            <div id="searchResults" class="search-results"></div>
+          </div>
+        </div>
+
+        <div id="selectedCustomerBox" class="selected-customer">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="cname" id="selName"></div>
+              <div class="cphone" id="selPhone"></div>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm change-customer-btn" onclick="changeCustomer()">Change</button>
+          </div>
+
+          <div class="d-flex gap-2 mt-3">
+            <div class="stat-pill bg-white border">
+              <div class="label">Current Credit (Baaki)</div>
+              <div class="val text-danger" id="selCredit">Rs. 0</div>
+            </div>
+            <div class="stat-pill bg-white border">
+              <div class="label">Advance / Wallet</div>
+              <div class="val text-success" id="selWallet">Rs. 0</div>
+            </div>
+          </div>
+        </div>
+
+        <%# ── STEP 2: VOUCHER FORM ── %>
+        <div id="formSection">
+          <hr class="my-4">
+
+          <label class="form-label fw-semibold small">Amount Receive (Rs.)</label>
+          <input type="number" id="amountInput" class="form-control form-control-lg" placeholder="0" min="1" step="1">
+
+          <label class="form-label fw-semibold small mt-3">Payment Method</label>
+          <div class="d-flex gap-2 method-toggle">
+            <button type="button" id="btnCash" class="btn btn-outline-secondary" onclick="selectMethod('cash')">💵 Cash</button>
+            <button type="button" id="btnBank" class="btn btn-outline-secondary" onclick="selectMethod('bank')">🏦 Bank</button>
+          </div>
+
+          <div id="bankAccountWrap" class="mt-3" style="display:none;">
+            <label class="form-label fw-semibold small">Bank Account</label>
+            <select id="bankAccountId" class="form-select">
+              <option value="">-- Bank account select karo --</option>
+              <% bankAccounts.forEach(b => { %>
+                <option value="<%= b._id %>"><%= b.bankName %> — <%= b.accountTitle %></option>
+              <% }) %>
+            </select>
+          </div>
+
+          <label class="form-label fw-semibold small mt-3">Notes (optional)</label>
+          <input type="text" id="notesInput" class="form-control" placeholder="e.g. voucher #, reference...">
+
+          <div id="previewBox" class="preview-box" style="display:none;">
+            <div class="preview-row"><span>Credit pehle</span><span id="pvBefore">Rs. 0</span></div>
+            <div class="preview-row"><span>Credit mein adjust hoga</span><span id="pvApplied">Rs. 0</span></div>
+            <div class="preview-row"><span>Baaki credit (after)</span><span id="pvAfter" class="text-danger fw-semibold">Rs. 0</span></div>
+            <div class="preview-row" id="pvWalletRow" style="display:none;">
+              <span>Extra advance/wallet mein jayega</span><span id="pvWallet" class="text-success fw-semibold">Rs. 0</span>
+            </div>
+          </div>
+
+          <button type="button" id="submitBtn" class="btn submit-btn text-white w-100 mt-4 py-2" onclick="submitVoucher()">
+            ✔ Voucher Save Karo
+          </button>
+        </div>
+
+        <%# ── SUCCESS STATE ── %>
+        <div id="successBox" class="text-center py-4">
+          <div style="font-size:40px;">✅</div>
+          <div class="fw-bold fs-5 mt-2">Voucher save ho gaya!</div>
+          <div class="text-muted small mt-1" id="successDetail"></div>
+          <div class="d-flex gap-2 justify-content-center mt-4">
+            <button type="button" class="btn btn-outline-primary btn-sm" onclick="resetForm()">+ Naya Voucher</button>
+            <a href="/sales/credit" class="btn btn-primary btn-sm">Credit Sales Dekho</a>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+  const ALL_CUSTOMERS = <%- JSON.stringify(customers) %>;
+  let selectedCustomer = null;
+  let selectedMethod = null;
+
+  const searchInput   = document.getElementById('customerSearch');
+  const searchResults = document.getElementById('searchResults');
+
+  searchInput.addEventListener('input', () => {
+    const q = searchInput.value.trim().toLowerCase();
+    if (!q) { searchResults.classList.remove('show'); searchResults.innerHTML=''; return; }
+
+    const matches = ALL_CUSTOMERS.filter(c =>
+      c.name.toLowerCase().includes(q) || (c.phone || '').toLowerCase().includes(q)
+    ).slice(0, 15);
+
+    if (matches.length === 0) {
+      searchResults.innerHTML = '<div class="search-item text-muted">Koi customer nahi mila</div>';
+    } else {
+      searchResults.innerHTML = matches.map(c => `
+        <div class="search-item" onclick='pickCustomer(${JSON.stringify(c)})'>
+          <div class="name">${escapeHtml(c.name)}</div>
+          <div class="meta">${escapeHtml(c.phone || 'No phone')}
+            ${c.creditOwed > 0 ? `<span class="credit-tag"> • Baaki: Rs. ${c.creditOwed.toLocaleString()}</span>` : ''}
+          </div>
+        </div>`).join('');
+    }
+    searchResults.classList.add('show');
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.search-wrap')) searchResults.classList.remove('show');
+  });
+
+  function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+  }
+
+  function pickCustomer(c) {
+    selectedCustomer = c;
+    searchResults.classList.remove('show');
+    searchInput.value = '';
+    document.getElementById('searchSection').style.display = 'none';
+
+    document.getElementById('selName').textContent  = c.name;
+    document.getElementById('selPhone').textContent = c.phone || 'No phone number';
+    document.getElementById('selCredit').textContent = 'Rs. ' + (c.creditOwed || 0).toLocaleString();
+    document.getElementById('selWallet').textContent = 'Rs. ' + (c.walletBalance || 0).toLocaleString();
+
+    document.getElementById('selectedCustomerBox').classList.add('show');
+    document.getElementById('formSection').classList.add('show');
+    updatePreview();
+  }
+
+  function changeCustomer() {
+    selectedCustomer = null;
+    document.getElementById('selectedCustomerBox').classList.remove('show');
+    document.getElementById('formSection').classList.remove('show');
+    document.getElementById('searchSection').style.display = 'block';
+    document.getElementById('previewBox').style.display = 'none';
+  }
+
+  function selectMethod(m) {
+    selectedMethod = m;
+    document.getElementById('btnCash').classList.toggle('active-cash', m === 'cash');
+    document.getElementById('btnBank').classList.toggle('active-bank', m === 'bank');
+    document.getElementById('bankAccountWrap').style.display = (m === 'bank') ? 'block' : 'none';
+  }
+
+  document.getElementById('amountInput').addEventListener('input', updatePreview);
+
+  function updatePreview() {
+    const amount = parseFloat(document.getElementById('amountInput').value) || 0;
+    const previewBox = document.getElementById('previewBox');
+    if (!selectedCustomer || amount <= 0) { previewBox.style.display = 'none'; return; }
+
+    const before  = selectedCustomer.creditOwed || 0;
+    const applied = Math.min(amount, before);
+    const after   = before - applied;
+    const wallet  = amount - applied;
+
+    document.getElementById('pvBefore').textContent  = 'Rs. ' + before.toLocaleString();
+    document.getElementById('pvApplied').textContent = 'Rs. ' + applied.toLocaleString();
+    document.getElementById('pvAfter').textContent   = 'Rs. ' + after.toLocaleString();
+
+    const walletRow = document.getElementById('pvWalletRow');
+    if (wallet > 0) {
+      walletRow.style.display = 'flex';
+      document.getElementById('pvWallet').textContent = 'Rs. ' + wallet.toLocaleString();
+    } else {
+      walletRow.style.display = 'none';
+    }
+    previewBox.style.display = 'block';
+  }
+
+  function showError(msg) {
+    const box = document.getElementById('errorBox');
+    box.textContent = msg;
+    box.style.display = 'block';
+    setTimeout(() => { box.style.display = 'none'; }, 4000);
+  }
+
+  async function submitVoucher() {
+    if (!selectedCustomer) return showError('Pehle customer select karo');
+
+    const amount = parseFloat(document.getElementById('amountInput').value) || 0;
+    if (amount <= 0) return showError('Amount enter karo');
+    if (!selectedMethod) return showError('Payment method select karo (Cash ya Bank)');
+
+    const bankAccountId = document.getElementById('bankAccountId').value;
+    if (selectedMethod === 'bank' && !bankAccountId) return showError('Bank account select karo');
+
+    const notes = document.getElementById('notesInput').value;
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Saving...';
+
+    try {
+      const res = await fetch('/sales/credit/voucher', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: selectedCustomer._id,
+          amount, method: selectedMethod, bankAccountId, notes
+        })
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) {
+        showError(data.error || 'Kuch masla ho gaya');
+        submitBtn.disabled = false;
+        submitBtn.textContent = '✔ Voucher Save Karo';
+        return;
+      }
+
+      document.getElementById('successDetail').textContent =
+        `${selectedCustomer.name} — Rs. ${amount.toLocaleString()} receive hui. ` +
+        `Baaki credit: Rs. ${data.creditAfter.toLocaleString()}` +
+        (data.walletAdded > 0 ? `, Advance mein add hua: Rs. ${data.walletAdded.toLocaleString()}` : '');
+
+      document.querySelector('.voucher-card .card > *:not(#successBox)').closest('.card');
+      document.getElementById('searchSection').style.display = 'none';
+      document.getElementById('selectedCustomerBox').classList.remove('show');
+      document.getElementById('formSection').classList.remove('show');
+      document.getElementById('successBox').classList.add('show');
+
+    } catch (err) {
+      showError('Network error: ' + err.message);
+      submitBtn.disabled = false;
+      submitBtn.textContent = '✔ Voucher Save Karo';
+    }
+  }
+
+  function resetForm() {
+    selectedCustomer = null;
+    selectedMethod = null;
+    document.getElementById('amountInput').value = '';
+    document.getElementById('notesInput').value = '';
+    document.getElementById('bankAccountId').value = '';
+    document.getElementById('btnCash').classList.remove('active-cash');
+    document.getElementById('btnBank').classList.remove('active-bank');
+    document.getElementById('bankAccountWrap').style.display = 'none';
+    document.getElementById('previewBox').style.display = 'none';
+    document.getElementById('successBox').classList.remove('show');
+    document.getElementById('searchSection').style.display = 'block';
+
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = false;
+    submitBtn.textContent = '✔ Voucher Save Karo';
+
+    // Page reload karo taake customer list ke credit figures fresh ho jayen
+    location.reload();
+  }
+</script>
+
+</body>
+</html>

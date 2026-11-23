@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventory Report</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f4f5f7; font-size: 14px; }
+    .main { margin-left: 220px; }
+    .topbar { position: sticky; top: 0; z-index: 50; }
+    .stat-card { border-top: 3px solid transparent; }
+    .stat-card.green  { border-top-color: #1e7e34; }
+    .stat-card.blue   { border-top-color: #1a6fbc; }
+    .stat-card.purple { border-top-color: #6f42c1; }
+    .stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500; }
+    .stat-value { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+    @media(max-width:768px){ .main{ margin-left:60px; } }
+  </style>
+</head>
+<body>
+
+<%- include('../partials/sidebar') %>
+
+<main class="main">
+
+  <div class="topbar bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between shadow-sm">
+    <div class="d-flex align-items-center gap-2">
+      <a href="/products" class="btn btn-outline-secondary btn-sm">← Back</a>
+      <h2 class="fs-6 fw-semibold mb-0">📊 Inventory Report</h2>
+    </div>
+  </div>
+
+  <div class="p-4">
+
+    <%# Summary Cards %>
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-lg-3">
+        <div class="card stat-card blue h-100 p-3 shadow-sm position-relative overflow-hidden">
+          <div class="stat-label text-muted mb-2">Total Cost Value</div>
+          <div class="stat-value">Rs. <%= totalCostValue.toLocaleString() %></div>
+          <div class="small text-muted mt-1">Mujhe kitne ki mili (buy price)</div>
+          <span class="position-absolute" style="bottom:12px;right:14px;font-size:26px;opacity:0.15;">💰</span>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card stat-card green h-100 p-3 shadow-sm position-relative overflow-hidden">
+          <div class="stat-label text-muted mb-2">Total Sell Value</div>
+          <div class="stat-value">Rs. <%= totalSellValue.toLocaleString() %></div>
+          <div class="small text-muted mt-1">Mujhe kitne ki sell karni hai</div>
+          <span class="position-absolute" style="bottom:12px;right:14px;font-size:26px;opacity:0.15;">🏷️</span>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card stat-card purple h-100 p-3 shadow-sm position-relative overflow-hidden">
+          <div class="stat-label text-muted mb-2">Profit Potential</div>
+          <div class="stat-value text-<%= totalProfitValue >= 0 ? 'success' : 'danger' %>">Rs. <%= totalProfitValue.toLocaleString() %></div>
+          <div class="small text-muted mt-1">
+            Agar pura stock bik jaye
+          </div>
+          <span class="position-absolute" style="bottom:12px;right:14px;font-size:26px;opacity:0.15;">📈</span>
+        </div>
+      </div>
+      <div class="col-6 col-lg-3">
+        <div class="card stat-card h-100 p-3 shadow-sm position-relative overflow-hidden">
+          <div class="stat-label text-muted mb-2">Total Stock</div>
+          <div class="stat-value" style="font-size:1.2rem;"><%= totalStockAll.toLocaleString() %> units</div>
+          <span class="position-absolute" style="bottom:12px;right:14px;font-size:26px;opacity:0.15;">📦</span>
+        </div>
+      </div>
+    </div>
+
+    <%# Live Search by Name (instant, client-side) %>
+    <div class="d-flex gap-2 mb-3 align-items-center">
+      <input
+        type="text"
+        id="liveSearchInput"
+        class="form-control form-control-sm"
+        style="width:260px;"
+        placeholder="🔍 Product name se search karein..."
+        oninput="filterInventoryRows()"
+      >
+      <span id="liveSearchCount" class="small text-muted"></span>
+    </div>
+
+    <%# Report Table %>
+    <div class="card shadow-sm">
+      <div class="card-header bg-light d-flex align-items-center justify-content-between py-3">
+        <h6 class="mb-0 fw-semibold">Inventory Detail</h6>
+        <span id="itemsCountBadge" class="badge bg-light text-secondary border border-secondary-subtle px-3"><%= rows.length %> items</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="text-uppercase small text-muted fw-semibold px-3">Product</th>
+              <th class="text-uppercase small text-muted fw-semibold">Stock (Units)</th>
+              <th class="text-uppercase small text-muted fw-semibold">Buy Price/Unit</th>
+              <th class="text-uppercase small text-muted fw-semibold">Sell Price/Unit</th>
+              <th class="text-uppercase small text-muted fw-semibold">Cost Value</th>
+              <th class="text-uppercase small text-muted fw-semibold">Sell Value</th>
+              <th class="text-uppercase small text-muted fw-semibold">Profit Potential</th>
+            </tr>
+          </thead>
+          <tbody id="inventoryTbody">
+            <% if (rows.length === 0) { %>
+              <tr><td colspan="7" class="text-center text-muted py-5">Koi product nahi mila.</td></tr>
+            <% } %>
+            <% rows.forEach(r => { %>
+              <tr class="inventory-row" data-name="<%= r.name.toLowerCase() %>">
+                <td class="px-3">
+                  <div class="fw-bold"><%= r.name %></div>
+                  <% if (r.barcode) { %><div class="text-muted small">🏷️ <%= r.barcode %></div><% } %>
+                  <div class="text-muted" style="font-size:10px;"><%= r.manufacturer %></div>
+                </td>
+                <td>
+                  <span class="fw-semibold"><%= r.stock.toLocaleString() %> units</span>
+                </td>
+                <td>Rs. <%= r.purchasePrice.toLocaleString() %></td>
+                <td>Rs. <%= r.sellingPrice.toLocaleString() %></td>
+                <td class="fw-semibold">Rs. <%= r.costValue.toLocaleString() %></td>
+                <td class="fw-semibold text-primary">Rs. <%= r.sellValue.toLocaleString() %></td>
+                <td class="fw-semibold text-<%= r.profitValue >= 0 ? 'success' : 'danger' %>">Rs. <%= r.profitValue.toLocaleString() %></td>
+              </tr>
+            <% }) %>
+            <tr id="noMatchRow" class="d-none">
+              <td colspan="7" class="text-center text-muted py-5">Is naam ka koi product nahi mila.</td>
+            </tr>
+          </tbody>
+          <% if (rows.length > 0) { %>
+          <tfoot>
+            <tr class="table-light fw-bold">
+              <td class="px-3">Total</td>
+              <td><%= totalStockAll.toLocaleString() %> units</td>
+              <td colspan="2"></td>
+              <td>Rs. <%= totalCostValue.toLocaleString() %></td>
+              <td class="text-primary">Rs. <%= totalSellValue.toLocaleString() %></td>
+              <td class="text-<%= totalProfitValue >= 0 ? 'success' : 'danger' %>">Rs. <%= totalProfitValue.toLocaleString() %></td>
+            </tr>
+          </tfoot>
+          <% } %>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  function filterInventoryRows() {
+    const term = document.getElementById('liveSearchInput').value.trim().toLowerCase();
+    const rows = document.querySelectorAll('#inventoryTbody tr.inventory-row');
+    const noMatchRow = document.getElementById('noMatchRow');
+    let visibleCount = 0;
+
+    rows.forEach(row => {
+      const name = row.getAttribute('data-name') || '';
+      const isMatch = name.includes(term);
+      row.classList.toggle('d-none', !isMatch);
+      if (isMatch) visibleCount++;
+    });
+
+    noMatchRow.classList.toggle('d-none', visibleCount !== 0);
+
+    const countBadge = document.getElementById('itemsCountBadge');
+    if (countBadge) countBadge.textContent = `${visibleCount} items`;
+
+    const countHint = document.getElementById('liveSearchCount');
+    if (countHint) countHint.textContent = term ? `${visibleCount} match mile` : '';
+  }
+</script>
+
+</body>
+</html>

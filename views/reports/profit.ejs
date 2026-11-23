@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profit Report</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f4f5f7; font-size: 14px; }
+    .main { margin-left: 220px; }
+    .topbar { position: sticky; top: 0; z-index: 50; }
+    .stat-card { border-top: 3px solid transparent; }
+    .stat-card.blue   { border-top-color: #1a6fbc; }
+    .stat-card.red    { border-top-color: #c0392b; }
+    .stat-card.orange { border-top-color: #fd7e14; }
+    .stat-card.green  { border-top-color: #1e7e34; }
+    .stat-card.purple { border-top-color: #6f42c1; }
+    .stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; }
+    .profit-pos { color: #1e7e34; font-weight: 600; }
+    .profit-neg { color: #c0392b; font-weight: 600; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(14px);} to{opacity:1;transform:translateY(0);} }
+    .stat-card { animation: fadeUp 0.35s ease both; }
+    @media(max-width:768px){ .main{ margin-left:60px; } }
+  </style>
+</head>
+<body>
+
+<%- include('../partials/sidebar') %>
+
+<main class="main">
+
+  <div class="topbar bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between shadow-sm">
+    <h2 class="fs-6 fw-semibold mb-0">📊 Profit Report</h2>
+    <span class="badge bg-warning-subtle text-warning border border-warning-subtle px-3">Live Data</span>
+  </div>
+
+  <div class="p-4">
+
+    <!-- Date Filter -->
+    <form method="GET" class="d-flex align-items-center gap-2 mb-4 p-3 bg-white border rounded shadow-sm flex-wrap">
+      <span class="small fw-semibold text-muted">Date Range</span>
+      <input type="date" name="from" class="form-control form-control-sm" style="width:160px;" value="<%= from || '' %>">
+      <span class="text-muted small">→</span>
+      <input type="date" name="to" class="form-control form-control-sm" style="width:160px;" value="<%= to || '' %>">
+      <button class="btn btn-primary btn-sm">Apply Filter</button>
+      <a href="/reports/profit" class="btn btn-outline-secondary btn-sm">Reset</a>
+    </form>
+
+    <!-- Tabs: Profit | Cash Flow -->
+    <ul class="nav nav-tabs mb-4" id="reportTabs" role="tablist">
+      <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="profit-tab-btn" data-bs-toggle="tab" data-bs-target="#profit-tab" type="button" role="tab">
+          📊 Profit
+        </button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="cashflow-tab-btn" data-bs-toggle="tab" data-bs-target="#cashflow-tab" type="button" role="tab">
+          💵 Cash Flow
+        </button>
+      </li>
+    </ul>
+
+    <div class="tab-content" id="reportTabsContent">
+
+    <!-- ══════════════════════ TAB 1: PROFIT ══════════════════════ -->
+    <div class="tab-pane fade show active" id="profit-tab" role="tabpanel">
+
+    <!-- Row 1: Revenue, Cost, Gross Profit -->
+    <div class="row g-3 mb-3">
+      <div class="col-6 col-md-4">
+        <div class="card stat-card blue p-3 shadow-sm position-relative overflow-hidden">
+          <div class="stat-label text-muted mb-2">💰 Total Revenue</div>
+          <div class="stat-value">Rs <%= totalRevenue.toLocaleString('en-PK') %></div>
+          <div class="small text-muted mt-1">Sales se aya paisa</div>
+          <span class="position-absolute" style="bottom:10px;right:12px;font-size:28px;opacity:0.12;">💰</span>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="card stat-card red p-3 shadow-sm position-relative overflow-hidden">
+          <div class="stat-label text-muted mb-2">📦 Products Cost</div>
+          <div class="stat-value">Rs <%= totalCost.toLocaleString('en-PK') %></div>
+          <div class="small text-muted mt-1">Maal ki lagat</div>
+          <span class="position-absolute" style="bottom:10px;right:12px;font-size:28px;opacity:0.12;">📦</span>
+        </div>
+      </div>
+      <div class="col-6 col-md-4">
+        <div class="card stat-card purple p-3 shadow-sm position-relative overflow-hidden">
+          <div class="stat-label text-muted mb-2">📊 Gross Profit</div>
+          <div class="stat-value <%= grossProfit >= 0 ? 'profit-pos' : 'profit-neg' %>">
+            Rs <%= grossProfit.toLocaleString('en-PK') %>
+          </div>
+          <div class="small text-muted mt-1">Revenue − Product Cost</div>
+          <span class="position-absolute" style="bottom:10px;right:12px;font-size:28px;opacity:0.12;">📊</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Expenses + Net Profit (highlighted) -->
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-6">
+        <div class="card stat-card orange p-3 shadow-sm position-relative overflow-hidden">
+          <div class="stat-label text-muted mb-2">💸 Total Expenses</div>
+          <div class="stat-value text-danger">Rs <%= totalExpenses.toLocaleString('en-PK') %></div>
+          <div class="small text-muted mt-1">Petrol, food, services etc.</div>
+          <span class="position-absolute" style="bottom:10px;right:12px;font-size:28px;opacity:0.12;">💸</span>
+        </div>
+      </div>
+      <div class="col-6 col-md-6">
+        <div class="card stat-card green p-3 shadow-sm position-relative overflow-hidden border-2 <%= netProfit < 0 ? 'border-danger' : 'border-success' %>">
+          <div class="stat-label text-muted mb-2">✅ NET PROFIT</div>
+          <div class="stat-value <%= netProfit >= 0 ? 'profit-pos' : 'profit-neg' %>" style="font-size:1.9rem;">
+            Rs <%= netProfit.toLocaleString('en-PK') %>
+          </div>
+          <div class="small text-muted mt-1">Gross Profit − Expenses</div>
+          <% if (netProfit < 0) { %>
+            <span class="badge bg-danger mt-1">⚠️ Nuqsan ho raha hai!</span>
+          <% } else { %>
+            <span class="badge bg-success mt-1">✅ Faida ho raha hai</span>
+          <% } %>
+          <span class="position-absolute" style="bottom:10px;right:12px;font-size:28px;opacity:0.12;">📈</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Expense Category Breakdown -->
+    <% if (expenseCategoryTotals.length > 0) { %>
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center">
+        <h6 class="mb-0 fw-semibold">💸 Expenses — Category Breakdown</h6>
+        <span class="text-muted small">Is period mein</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="row g-0">
+          <% expenseCategoryTotals.forEach(ec => { %>
+          <div class="col-6 col-md-3 border-end border-bottom p-3 text-center">
+            <div class="small text-muted text-uppercase fw-semibold mb-1"><%= ec._id %></div>
+            <div class="fw-bold text-danger">Rs <%= ec.total.toLocaleString('en-PK') %></div>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+    </div>
+    <% } %>
+
+    <!-- Daily Breakdown Table -->
+    <div class="card shadow-sm">
+      <div class="card-header bg-light d-flex align-items-center justify-content-between py-3">
+        <h6 class="mb-0 fw-semibold">📅 Daily Breakdown</h6>
+        <span class="badge bg-light text-secondary border px-3"><%= dailyData.length %> din</span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0 align-middle">
+          <thead class="table-light">
+            <tr>
+              <th class="text-uppercase small text-muted fw-semibold px-3">Date</th>
+              <th class="text-uppercase small text-muted fw-semibold">Revenue</th>
+              <th class="text-uppercase small text-muted fw-semibold">Product Cost</th>
+              <th class="text-uppercase small text-muted fw-semibold">Gross Profit</th>
+              <th class="text-uppercase small text-muted fw-semibold text-danger">Expenses</th>
+              <th class="text-uppercase small text-muted fw-semibold">Net Profit</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (dailyData.length === 0) { %>
+              <tr><td colspan="6" class="text-center text-muted py-5">Is period mein koi data nahi</td></tr>
+            <% } %>
+            <% dailyData.forEach(d => { %>
+              <tr>
+                <td class="px-3 fw-semibold"><%= d.date %></td>
+                <td>Rs <%= d.revenue.toLocaleString('en-PK') %></td>
+                <td class="text-muted">Rs <%= d.cost.toLocaleString('en-PK') %></td>
+                <td class="<%= d.gross >= 0 ? 'profit-pos' : 'profit-neg' %>">
+                  Rs <%= d.gross.toLocaleString('en-PK') %>
+                </td>
+                <td class="text-danger">
+                  <% if (d.expenses > 0) { %>
+                    − Rs <%= d.expenses.toLocaleString('en-PK') %>
+                  <% } else { %>
+                    <span class="text-muted">—</span>
+                  <% } %>
+                </td>
+                <td class="<%= d.net >= 0 ? 'profit-pos' : 'profit-neg' %>" style="font-size:0.95rem;">
+                  Rs <%= d.net.toLocaleString('en-PK') %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+          <!-- Totals Footer -->
+          <tfoot class="table-light fw-bold">
+            <tr>
+              <td class="px-3">Total</td>
+              <td>Rs <%= totalRevenue.toLocaleString('en-PK') %></td>
+              <td class="text-muted">Rs <%= totalCost.toLocaleString('en-PK') %></td>
+              <td class="<%= grossProfit >= 0 ? 'profit-pos' : 'profit-neg' %>">
+                Rs <%= grossProfit.toLocaleString('en-PK') %>
+              </td>
+              <td class="text-danger">− Rs <%= totalExpenses.toLocaleString('en-PK') %></td>
+              <td class="<%= netProfit >= 0 ? 'profit-pos' : 'profit-neg' %>" style="font-size:1rem;">
+                Rs <%= netProfit.toLocaleString('en-PK') %>
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+
+    </div>
+    <!-- ══════════════════════ /TAB 1: PROFIT ══════════════════════ -->
+
+    <!-- ══════════════════════ TAB 2: CASH FLOW ══════════════════════ -->
+    <div class="tab-pane fade" id="cashflow-tab" role="tabpanel">
+
+      <!-- Summary Cards -->
+      <div class="row g-3 mb-3">
+        <div class="col-6 col-md-4">
+          <div class="card stat-card green p-3 shadow-sm position-relative overflow-hidden">
+            <div class="stat-label text-muted mb-2">⬇️ Total Paisa Aya</div>
+            <div class="stat-value profit-pos">Rs <%= cashFlow.totalIn.toLocaleString('en-PK') %></div>
+            <div class="small text-muted mt-1">Sales + Credit Payments</div>
+            <span class="position-absolute" style="bottom:10px;right:12px;font-size:28px;opacity:0.12;">⬇️</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-4">
+          <div class="card stat-card red p-3 shadow-sm position-relative overflow-hidden">
+            <div class="stat-label text-muted mb-2">⬆️ Total Paisa Gaya</div>
+            <div class="stat-value profit-neg">Rs <%= cashFlow.totalOut.toLocaleString('en-PK') %></div>
+            <div class="small text-muted mt-1">Supplier Payments + Expenses</div>
+            <span class="position-absolute" style="bottom:10px;right:12px;font-size:28px;opacity:0.12;">⬆️</span>
+          </div>
+        </div>
+        <div class="col-6 col-md-4">
+          <div class="card stat-card <%= cashFlow.netCashFlow >= 0 ? 'green' : 'red' %> p-3 shadow-sm position-relative overflow-hidden border-2 <%= cashFlow.netCashFlow >= 0 ? 'border-success' : 'border-danger' %>">
+            <div class="stat-label text-muted mb-2">⚖️ Net Cash Flow</div>
+            <div class="stat-value <%= cashFlow.netCashFlow >= 0 ? 'profit-pos' : 'profit-neg' %>" style="font-size:1.7rem;">
+              Rs <%= cashFlow.netCashFlow.toLocaleString('en-PK') %>
+            </div>
+            <div class="small text-muted mt-1">Paisa Aya − Paisa Gaya</div>
+            <span class="position-absolute" style="bottom:10px;right:12px;font-size:28px;opacity:0.12;">⚖️</span>
+          </div>
+        </div>
+      </div>
+
+      <% if (cashFlow.transferCount > 0) { %>
+      <div class="alert alert-secondary d-flex justify-content-between align-items-center py-2 px-3 mb-4" style="font-size:0.85rem;">
+        <span>↔️ Is period mein <strong><%= cashFlow.transferCount %></strong> internal transfer(s) hue (Cash ↔ Bank) — yeh in/out mein shamil nahi, sirf jagah badli hai.</span>
+        <span class="fw-semibold">Rs <%= cashFlow.totalTransferred.toLocaleString('en-PK') %></span>
+      </div>
+      <% } %>
+
+      <!-- Type-wise Breakdown -->
+      <% if (cashFlow.byType.length > 0) { %>
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light py-3">
+          <h6 class="mb-0 fw-semibold">📋 Category Breakdown</h6>
+        </div>
+        <div class="card-body p-0">
+          <div class="row g-0">
+            <% cashFlow.byType.forEach(bt => { %>
+            <div class="col-6 col-md-3 border-end border-bottom p-3 text-center">
+              <div class="small text-muted text-uppercase fw-semibold mb-1"><%= bt.kind === 'in' ? '⬇️' : '⬆️' %> <%= bt.type %></div>
+              <div class="fw-bold <%= bt.kind === 'in' ? 'profit-pos' : 'profit-neg' %>">
+                Rs <%= bt.total.toLocaleString('en-PK') %>
+              </div>
+              <div class="text-muted" style="font-size:0.72rem;"><%= bt.count %> transaction<%= bt.count !== 1 ? 's' : '' %></div>
+            </div>
+            <% }) %>
+          </div>
+        </div>
+      </div>
+      <% } %>
+
+      <!-- Full Transaction List -->
+      <div class="card shadow-sm">
+        <div class="card-header bg-light d-flex align-items-center justify-content-between py-3">
+          <h6 class="mb-0 fw-semibold">🧾 All Transactions</h6>
+          <span class="badge bg-light text-secondary border px-3"><%= cashFlow.rows.length %> entries</span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0 align-middle">
+            <thead class="table-light">
+              <tr>
+                <th class="text-uppercase small text-muted fw-semibold px-3">Date</th>
+                <th class="text-uppercase small text-muted fw-semibold">Type</th>
+                <th class="text-uppercase small text-muted fw-semibold">Detail</th>
+                <th class="text-uppercase small text-muted fw-semibold">Account</th>
+                <th class="text-uppercase small text-muted fw-semibold text-end px-3">Amount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (cashFlow.rows.length === 0) { %>
+                <tr><td colspan="5" class="text-center text-muted py-5">Is period mein koi transaction nahi</td></tr>
+              <% } %>
+              <% cashFlow.rows.forEach(r => { %>
+                <tr>
+                  <td class="px-3" style="font-size:0.78rem;">
+                    <span class="text-dark"><%= moment(r.createdAt).format('DD MMM YYYY') %></span>
+                    <br>
+                    <span class="text-muted"><%= moment(r.createdAt).format('hh:mm A') %></span>
+                  </td>
+                  <td>
+                    <% if (r.kind === 'in') { %>
+                      <span class="badge bg-success-subtle text-success border border-success-subtle"><%= r.icon %> <%= r.type %></span>
+                    <% } else if (r.kind === 'out') { %>
+                      <span class="badge bg-danger-subtle text-danger border border-danger-subtle"><%= r.icon %> <%= r.type %></span>
+                    <% } else { %>
+                      <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle"><%= r.icon %> <%= r.type %></span>
+                    <% } %>
+                  </td>
+                  <td class="small">
+                    <% if (r.link) { %>
+                      <a href="<%= r.link %>" target="_blank" class="text-decoration-none text-dark fw-semibold"><%= r.label %></a>
+                    <% } else { %>
+                      <%= r.label %>
+                    <% } %>
+                  </td>
+                  <td class="small text-muted"><%= r.account %></td>
+                  <td class="text-end px-3 fw-semibold <%= r.kind === 'in' ? 'profit-pos' : (r.kind === 'out' ? 'profit-neg' : 'text-secondary') %>">
+                    <%= r.kind === 'in' ? '+' : (r.kind === 'out' ? '−' : '') %> Rs <%= r.amount.toLocaleString('en-PK') %>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+    <!-- ══════════════════════ /TAB 2: CASH FLOW ══════════════════════ -->
+
+    </div>
+
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

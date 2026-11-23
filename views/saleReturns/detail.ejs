@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Return Detail</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f4f5f7; font-size: 14px; }
+    .main { margin-left: 220px; }
+    .topbar { position: sticky; top: 0; z-index: 50; }
+    @media(max-width:768px){ .main{ margin-left:60px; } }
+  </style>
+</head>
+<body>
+
+<%- include('../partials/sidebar') %>
+
+<main class="main">
+
+  <div class="topbar bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between shadow-sm">
+    <h2 class="fs-6 fw-semibold mb-0">↩️ Return — <%= saleReturn.returnNumber %></h2>
+    <a href="/sale-returns" class="btn btn-outline-secondary btn-sm">← Back</a>
+  </div>
+
+  <div class="p-4">
+
+    <div class="card shadow-sm mb-3">
+      <div class="card-body p-4">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <div class="small text-muted">Type</div>
+            <div class="fw-semibold">
+              <% if (saleReturn.returnType === 'open') { %>
+                <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Open (No Invoice)</span>
+              <% } else { %>
+                <span class="badge bg-success-subtle text-success border border-success-subtle">Linked</span>
+              <% } %>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="small text-muted">Original Invoice</div>
+            <div class="fw-semibold"><%= saleReturn.originalInvoiceNumber || '—' %></div>
+          </div>
+          <div class="col-md-3">
+            <div class="small text-muted">Customer</div>
+            <div class="fw-semibold"><%= saleReturn.customerName %></div>
+          </div>
+          <div class="col-md-3">
+            <div class="small text-muted">Date</div>
+            <div class="fw-semibold"><%= moment(saleReturn.createdAt).format('DD MMM YYYY, hh:mm A') %></div>
+          </div>
+        </div>
+        <hr>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <div class="small text-muted">Refund Mode</div>
+            <div class="fw-semibold text-capitalize"><%= saleReturn.refundMode %></div>
+          </div>
+          <div class="col-md-3">
+            <div class="small text-muted">Processed By</div>
+            <div class="fw-semibold"><%= saleReturn.processedBy || '—' %></div>
+          </div>
+          <div class="col-md-3">
+            <div class="small text-muted">Total Refund</div>
+            <div class="fw-bold text-danger">Rs. <%= saleReturn.totalRefundAmount.toLocaleString() %></div>
+          </div>
+        </div>
+        <% if (saleReturn.notes) { %>
+          <hr>
+          <div class="small text-muted">Notes</div>
+          <div><%= saleReturn.notes %></div>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-light py-2"><h6 class="mb-0 fw-semibold">Returned Items</h6></div>
+      <div class="table-responsive">
+        <table class="table table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="px-3">Medicine</th>
+              <th>Qty</th>
+              <th>Rate</th>
+              <th>Refund</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% saleReturn.items.forEach(item => { %>
+              <tr>
+                <td class="px-3 fw-semibold"><%= item.medicineName %></td>
+                <td><%= item.quantity %></td>
+                <td>Rs. <%= item.unitPrice.toLocaleString() %></td>
+                <td>Rs. <%= item.refundAmount.toLocaleString() %></td>
+                <td class="text-muted small"><%= item.reason || '—' %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+</body>
+</html>

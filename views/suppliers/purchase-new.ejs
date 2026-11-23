@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Purchase — <%= supplier.name %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { font-size: 14px; background: #f4f5f7; }
+    .main { margin-left: 220px; }
+    @media(max-width: 768px) { .main { margin-left: 60px; } }
+    .pos-left  { display: flex; flex-direction: column; gap: 12px; overflow: hidden; height: calc(100vh - 76px); }
+    .pos-right { display: flex; flex-direction: column; overflow: hidden; height: calc(100vh - 76px); }
+    .product-search-results { display: none; grid-template-columns: repeat(3,1fr); gap: 8px; }
+    .product-tile { cursor: pointer; transition: border-color .15s, background .15s; }
+    .product-tile:hover { border-color: #0d6efd !important; background: #e7f1ff !important; }
+    .cart-table { flex: 1; overflow-y: auto; }
+    .qty-input, .price-input { width: 78px; text-align: right; }
+    #successModal { display: none; position: fixed; inset: 0; z-index: 1055; align-items: center; justify-content: center; background: rgba(0,0,0,.45); }
+  </style>
+</head>
+<body>
+  <%- include('../partials/sidebar') %>
+
+  <main class="main">
+
+    <!-- Top Bar -->
+    <div class="bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between shadow-sm sticky-top">
+      <div>
+        <h2 class="fs-6 fw-semibold mb-0">📦 Add Purchase — <%= supplier.name %></h2>
+        <div class="text-muted" style="font-size:12px;">Naya saman liya — medicines add karo, stock khud restock ho jayega</div>
+      </div>
+      <a href="/suppliers/<%= supplier._id %>" class="btn btn-outline-secondary btn-sm">← Back to Ledger</a>
+    </div>
+
+    <!-- Layout -->
+    <div class="d-grid gap-3 p-3" style="grid-template-columns: 1fr 380px;">
+
+      <!-- LEFT: Medicine search + cart -->
+      <div class="pos-left">
+
+        <div class="card shadow-sm">
+          <div class="card-body py-3">
+            <div class="input-group">
+              <span class="input-group-text bg-white">🔍</span>
+              <input type="text" id="productSearch"
+                     class="form-control border-start-0"
+                     placeholder="Medicine ka naam ya barcode likho — jo pehle se hai wo show hoga..."
+                     autofocus>
+              <a href="/products/add?returnTo=<%= encodeURIComponent('/suppliers/' + supplier._id + '/purchase/new') %>"
+                 class="btn btn-outline-primary fw-semibold text-nowrap">➕ Naya Medicine</a>
+            </div>
+            <div class="form-text">Medicine select karo, phir quantity (tablets/units) aur purchase price daal ke cart mein add karo. Agar medicine list mein nahi hai to "➕ Naya Medicine" se bana lo.</div>
+          </div>
+        </div>
+
+        <div id="searchResults" class="product-search-results"></div>
+
+        <div class="card shadow-sm flex-fill overflow-hidden d-flex flex-column">
+          <div class="card-header bg-light d-flex align-items-center justify-content-between py-2">
+            <h6 class="mb-0 fw-semibold">🛒 Purchase Items</h6>
+            <span class="badge bg-info-subtle text-info border border-info-subtle" id="itemCount">0 items</span>
+          </div>
+          <div class="cart-table" id="cartItems">
+            <div class="text-center py-5 text-muted" id="cartEmpty">
+              <div class="fs-2 mb-2 opacity-25">📦</div>
+              <p class="mb-0 small">Abhi koi item add nahi hua — upar medicine search karo</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT: Summary -->
+      <div class="pos-right card shadow-sm">
+        <div class="card-header bg-light py-2">
+          <h6 class="mb-0 fw-semibold">Purchase Summary</h6>
+        </div>
+        <div class="p-3 flex-fill d-flex flex-column">
+
+          <div class="mb-2">
+            <label class="form-label small fw-semibold text-muted mb-1">Note (optional)</label>
+            <input type="text" id="purchaseNote" class="form-control form-control-sm" placeholder="e.g. Invoice #45, GRN ref...">
+          </div>
+
+          <div class="d-flex justify-content-between align-items-center rounded mb-3 px-3 py-3 bg-primary-subtle border border-primary-subtle mt-auto">
+            <strong class="small text-uppercase text-muted fw-bold" style="letter-spacing:.5px;">Total Purchase</strong>
+            <span id="grandTotal" class="fs-5 fw-bold text-warning">Rs. 0</span>
+          </div>
+
+          <div class="alert alert-secondary py-2 px-3 mb-3" style="font-size:12px;">
+            ℹ️ Yeh purchase pehle credit pe banta hai (payment yahan nahi li jaati). Payment baad mein supplier ledger se "Pay Supplier" ke through do.
+          </div>
+
+          <button class="btn btn-success w-100 fw-semibold py-2" id="savePurchaseBtn" onclick="savePurchase()">
+            ✅ Save Purchase &amp; Restock
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Success Modal -->
+  <div id="successModal">
+    <div class="bg-white rounded-3 p-4 shadow text-center" style="min-width:300px;">
+      <div class="fs-1 mb-2">✅</div>
+      <h5 class="fw-bold mb-1">Purchase Save ho gayi!</h5>
+      <p class="text-muted mb-3" id="modalMsg"></p>
+      <button class="btn btn-primary w-100" onclick="goToInvoice()">📄 Invoice Dekho</button>
+    </div>
+  </div>
+
+  <script>
+    let cart = [];
+    let searchTimeout;
+    let lastRedirect = null;
+    const supplierId = '<%= supplier._id %>';
+
+    document.getElementById('productSearch').addEventListener('input', function () {
+      clearTimeout(searchTimeout);
+      const q = this.value.trim();
+      if (q.length < 1) { document.getElementById('searchResults').style.display = 'none'; return; }
+      searchTimeout = setTimeout(() => searchProducts(q), 300);
+    });
+
+    async function searchProducts(q) {
+      const res = await fetch(`/products/api/search?q=${encodeURIComponent(q)}`);
+      const medicines = await res.json();
+      const container = document.getElementById('searchResults');
+
+      if (medicines.length === 0) {
+        container.style.display = 'grid';
+        container.style.gridTemplateColumns = '1fr';
+        const returnTo = encodeURIComponent('/suppliers/' + supplierId + '/purchase/new');
+        const prefill  = encodeURIComponent(q);
+        container.innerHTML = `
+          <div class="card border-dashed border-primary text-center p-3">
+            <div class="text-muted mb-2" style="font-size:13px;">"${q}" naam ki medicine nahi mili.</div>
+            <a class="btn btn-sm btn-primary fw-semibold" href="/products/add?returnTo=${returnTo}&prefillName=${prefill}">➕ "${q}" Nayi Medicine Banao</a>
+          </div>`;
+        return;
+      }
+
+      container.style.display = 'grid';
+      container.style.gridTemplateColumns = 'repeat(3,1fr)';
+      container.innerHTML = medicines.map(p => {
+        return `
+          <div class="product-tile card border text-center p-2"
+               onclick='addToCart(${JSON.stringify({
+                 id: p._id, name: p.name, manufacturer: p.manufacturer,
+                 purchasePrice: p.purchasePrice || 0,
+                 sellingPrice: p.sellingPrice || 0,
+                 stockBoxes: p.stockBoxes || 0
+               })})'>
+            <div class="fw-semibold small text-dark mb-1">${p.name}</div>
+            <div class="text-muted" style="font-size:.7rem;">${p.manufacturer || ''}</div>
+            <div class="fw-bold text-primary" style="font-size:.78rem;">Last cost: Rs. ${(p.purchasePrice || 0).toLocaleString()}</div>
+            <div class="text-muted" style="font-size:.68rem;">Current stock: ${p.stockBoxes || 0} units</div>
+          </div>`;
+      }).join('');
+    }
+
+    // ── Nayi medicine "/products/add" page se bana ke wapis aane par ────────
+    // uski id ?newProduct=<id> query mein milti hai, usay fetch karke
+    // seedha cart mein add kar dete hain.
+    async function checkForNewlyCreatedProduct() {
+      const params = new URLSearchParams(window.location.search);
+      const newProductId = params.get('newProduct');
+      if (!newProductId) return;
+
+      try {
+        const res = await fetch(`/products/api/${newProductId}`);
+        if (res.ok) {
+          const p = await res.json();
+          addToCart({
+            id: p._id,
+            name: p.name,
+            manufacturer: p.manufacturer,
+            purchasePrice: p.purchasePrice || 0,
+            sellingPrice: p.sellingPrice || 0,
+            stockBoxes: 0
+          });
+        }
+      } catch (err) {
+        console.error('Nayi medicine load nahi ho saki:', err);
+      } finally {
+        // URL se query param saaf kar do taake reload/refresh par dobara add na ho
+        params.delete('newProduct');
+        const newUrl = window.location.pathname + (params.toString() ? `?${params}` : '');
+        window.history.replaceState({}, '', newUrl);
+      }
+    }
+
+    checkForNewlyCreatedProduct();
+
+
+    function addToCart(p) {
+      document.getElementById('productSearch').value = '';
+      document.getElementById('searchResults').style.display = 'none';
+
+      // Har medicine ki har naya-restock entry apni alag cart line hoti hai —
+      // isliye yahan dedupe nahi karte, seedha nayi row add karte hain.
+      cart.push({
+        medicineId: p.id,
+        name: p.name,
+        quantity: 1,
+        unitPrice: p.purchasePrice || 0,
+        sellingPrice: p.sellingPrice || 0
+      });
+      renderCart();
+    }
+
+    function updateCartField(idx, field, val) {
+      const num = parseFloat(val);
+      cart[idx][field] = isNaN(num) ? 0 : num;
+      renderCart();
+    }
+
+    function removeFromCart(idx) {
+      cart.splice(idx, 1);
+      renderCart();
+    }
+
+    function renderCart() {
+      const container = document.getElementById('cartItems');
+      const emptyEl = document.getElementById('cartEmpty');
+      document.getElementById('itemCount').textContent = `${cart.length} item${cart.length !== 1 ? 's' : ''}`;
+
+      if (cart.length === 0) {
+        container.innerHTML = '';
+        container.appendChild(emptyEl);
+        document.getElementById('grandTotal').textContent = 'Rs. 0';
+        return;
+      }
+
+      let grandTotal = 0;
+      container.innerHTML = `
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light" style="font-size:11px; text-transform:uppercase; color:#6c757d;">
+            <tr>
+              <th>Medicine</th>
+              <th class="text-end">Qty (Tablets/Units)</th>
+              <th class="text-end">Purchase Price/Unit</th>
+              <th class="text-end">New Selling Price</th>
+              <th class="text-end">Total</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cart.map((item, idx) => {
+              const lineTotal = (item.quantity || 0) * (item.unitPrice || 0);
+              grandTotal += lineTotal;
+              return `
+              <tr>
+                <td class="fw-semibold">${item.name}</td>
+                <td class="text-end">
+                  <input type="number" class="form-control form-control-sm qty-input d-inline-block"
+                         min="0.01" step="1" value="${item.quantity}"
+                         oninput="updateCartField(${idx},'quantity',this.value)">
+                </td>
+                <td class="text-end">
+                  <input type="number" class="form-control form-control-sm price-input d-inline-block"
+                         min="0" step="0.01" value="${item.unitPrice}"
+                         oninput="updateCartField(${idx},'unitPrice',this.value)">
+                </td>
+                <td class="text-end">
+                  <input type="number" class="form-control form-control-sm price-input d-inline-block"
+                         min="0" step="0.01" placeholder="optional" value="${item.sellingPrice || ''}"
+                         oninput="updateCartField(${idx},'sellingPrice',this.value)">
+                </td>
+                <td class="text-end fw-bold">Rs. ${lineTotal.toLocaleString(undefined,{maximumFractionDigits:2})}</td>
+                <td class="text-end">
+                  <button class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${idx})">✕</button>
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>`;
+
+      document.getElementById('grandTotal').textContent = `Rs. ${grandTotal.toLocaleString(undefined,{maximumFractionDigits:2})}`;
+    }
+
+    async function savePurchase() {
+      if (cart.length === 0) { alert('Kam az kam 1 medicine add karo!'); return; }
+
+      for (const item of cart) {
+        if (!item.quantity || item.quantity <= 0) { alert(`"${item.name}" ki quantity valid nahi hai`); return; }
+        if (item.unitPrice === undefined || item.unitPrice < 0) { alert(`"${item.name}" ki price valid nahi hai`); return; }
+      }
+
+      const btn = document.getElementById('savePurchaseBtn');
+      btn.disabled = true;
+      btn.textContent = 'Saving...';
+
+      try {
+        const res = await fetch(`/suppliers/${supplierId}/purchase`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: cart.map(i => ({
+              medicineId: i.medicineId,
+              quantity: i.quantity,
+              unitPrice: i.unitPrice,
+              sellingPrice: i.sellingPrice || ''
+            })),
+            note: document.getElementById('purchaseNote').value || ''
+          })
+        });
+        const data = await res.json();
+        if (data.success) {
+          lastRedirect = data.redirect;
+          document.getElementById('modalMsg').textContent = 'Inventory restock ho gayi, supplier ledger update ho gaya.';
+          document.getElementById('successModal').style.display = 'flex';
+        } else {
+          alert('Error: ' + (data.error || 'Kuch masla hua'));
+          btn.disabled = false;
+          btn.textContent = '✅ Save Purchase & Restock';
+        }
+      } catch (err) {
+        alert('Server error: ' + err.message);
+        btn.disabled = false;
+        btn.textContent = '✅ Save Purchase & Restock';
+      }
+    }
+
+    function goToInvoice() {
+      if (lastRedirect) window.location.href = lastRedirect;
+    }
+  </script>
+</body>
+</html>

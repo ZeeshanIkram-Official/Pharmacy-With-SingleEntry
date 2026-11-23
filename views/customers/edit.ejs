@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Edit Customer — <%= customer.name %></title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  body { background: #f4f5f7; font-size: 14px; }
+  .main { margin-left: 220px; }
+  .topbar { position: sticky; top: 0; z-index: 50; }
+  @media(max-width:768px){ .main{ margin-left:60px; } }
+
+  .wrap{ max-width:760px; margin:0 auto; }
+
+  .ledger-card .card-head{
+    display:flex; align-items:center; gap:12px;
+  }
+  .avatar-mark{
+    width:38px; height:38px; border-radius:50%; background:#0d6efd; color:#fff;
+    display:flex; align-items:center; justify-content:center; font-weight:700;
+    font-size:16px; flex-shrink:0;
+  }
+  .card-head .name{ font-size:16px; font-weight:600; line-height:1.1; }
+  .card-head .sub{ font-size:11px; color:#6c757d; letter-spacing:.3px; }
+
+  .section-title{
+    font-size:10px; letter-spacing:1.5px; text-transform:uppercase; font-weight:700;
+    color:#6c757d; margin-bottom:14px; margin-top:26px;
+  }
+  .section-title:first-child{ margin-top:0; }
+
+  .field-group{ margin-bottom:18px; }
+  .field-group label{
+    display:block; font-size:11px; text-transform:uppercase; letter-spacing:.5px;
+    color:#6c757d; font-weight:600; margin-bottom:6px;
+  }
+  .field-group .req{ color:#dc3545; }
+
+  .form-row{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media(max-width:560px){ .form-row{ grid-template-columns:1fr; } }
+
+  .form-actions{
+    display:flex; gap:10px; margin-top:8px; padding-top:22px; border-top:1px solid #e2e4e9;
+  }
+</style>
+</head>
+<body>
+
+<%- include('../partials/sidebar') %>
+
+<main class="main">
+
+  <div class="topbar bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between shadow-sm">
+    <h2 class="fs-6 fw-semibold mb-0">✏️ Edit Customer</h2>
+    <a href="/customers/<%= customer._id %>" class="btn btn-outline-secondary btn-sm">← Back to Ledger</a>
+  </div>
+
+  <div class="p-4">
+    <div class="wrap">
+
+      <% if (error) { %>
+        <div class="alert alert-danger border-start border-danger border-4">❌ <%= error %></div>
+      <% } %>
+
+      <div class="ledger-card card shadow-sm">
+
+        <div class="card-header bg-light py-3 card-head">
+          <div class="avatar-mark"><%= customer.name.charAt(0).toUpperCase() %></div>
+          <div>
+            <div class="name"><%= customer.name %></div>
+            <div class="sub">Editing customer details</div>
+          </div>
+        </div>
+
+        <div class="card-body p-4">
+          <form action="/customers/<%= customer._id %>?_method=PUT" method="POST">
+
+            <div class="section-title">Basic Info</div>
+
+            <div class="field-group">
+              <label>Full Name <span class="req">*</span></label>
+              <input type="text" name="name" class="form-control" value="<%= customer.name %>" required placeholder="Customer ka naam">
+            </div>
+
+            <div class="form-row">
+              <div class="field-group">
+                <label>Phone Number</label>
+                <input type="tel" name="phone" class="form-control" value="<%= customer.phone || '' %>" placeholder="03xx-xxxxxxx">
+              </div>
+              <div class="field-group">
+                <label>Email</label>
+                <input type="email" name="email" class="form-control" value="<%= customer.email || '' %>" placeholder="email@example.com">
+              </div>
+            </div>
+
+            <div class="section-title">Additional Details</div>
+
+            <div class="field-group">
+              <label>Address</label>
+              <textarea name="address" class="form-control" rows="2" placeholder="Ghar ya dukaan ka address..."><%= customer.address || '' %></textarea>
+            </div>
+
+            <div class="field-group">
+              <label>Notes</label>
+              <input type="text" name="notes" class="form-control" value="<%= customer.notes || '' %>" placeholder="Koi khaas baat...">
+            </div>
+
+            <div class="section-title">💳 Credit / Advance</div>
+            <div class="alert alert-warning small py-2 px-3 mb-3">
+              ⚠️ Yeh live sales se calculate hota hai — yahan change karoge to sirf ek "adjustment" save hoga
+              (asal invoices nahi badlengi), aur yeh number har jagah (naya sale dropdown, credit-sales page,
+              ledger) turant reflect hoga.
+            </div>
+            <div class="form-row">
+              <div class="field-group">
+                <label>🔴 Credit (customer ne dena hai)</label>
+                <input type="number" step="0.01" min="0" name="credit" class="form-control" value="<%= currentCredit || 0 %>">
+              </div>
+              <div class="field-group">
+                <label>💰 Advance (customer ka wallet)</label>
+                <input type="number" step="0.01" min="0" name="advance" class="form-control" value="<%= customer.walletBalance || 0 %>">
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary btn-sm">💾 Save Changes</button>
+              <a href="/customers/<%= customer._id %>" class="btn btn-outline-secondary btn-sm">Cancel</a>
+            </div>
+
+          </form>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

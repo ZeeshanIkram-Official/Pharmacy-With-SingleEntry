@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Invoice <%= sale.invoiceNumber %></title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    /* ===== Thermal-receipt look (80mm roll) ===== */
+    :root{
+      --paper-w: 302px; /* ~80mm at 96dpi */
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', 'Courier', monospace;
+      background: #d9d6cf; /* table-ish backdrop like the sample photo */
+      color: #111;
+    }
+    .topbar { position: sticky; top: 0; z-index: 100; font-family: 'DM Sans', Arial, sans-serif; }
+
+    .receipt-wrap { display:flex; justify-content:center; padding: 24px 8px 40px; }
+    .receipt {
+      width: var(--paper-w);
+      background: #fff;
+      padding: 14px 12px 10px;
+      box-shadow: 0 2px 10px rgba(0,0,0,.25);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+    .r-center { text-align:center; }
+    .r-title {
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+    .r-sub { font-size: 10px; letter-spacing: .5px; }
+    .r-line { border-top: 1px dashed #000; margin: 6px 0; }
+    .r-line-solid { border-top: 1px solid #000; margin: 6px 0; }
+    .r-badge {
+      display:inline-block; border:1px solid #000; border-radius:12px;
+      padding: 1px 10px; font-size: 11px; font-weight:700; margin: 4px 0;
+      text-transform: uppercase;
+    }
+    .r-meta { font-size: 11px; }
+    .r-meta b { font-weight:700; }
+
+    table.r-items { width:100%; border-collapse: collapse; font-size: 11px; }
+    table.r-items thead th {
+      border-bottom: 1px dashed #000;
+      padding: 2px 0;
+      font-weight: 700;
+      text-transform: uppercase;
+      font-size: 10px;
+    }
+    table.r-items td { padding: 2px 0; vertical-align: top; }
+    table.r-items td.num, table.r-items th.num { text-align:right; white-space:nowrap; }
+    .r-item-name { font-size: 11px; }
+    .r-item-sub { font-size: 9px; color:#555; }
+
+    .r-tot-row { display:flex; justify-content:space-between; font-size:12px; padding: 1px 0; }
+    .r-tot-row.bold { font-weight:700; }
+    .r-net {
+      font-size: 18px; font-weight: 800; display:flex; justify-content:space-between;
+      padding: 4px 0; border-top: 1px solid #000; border-bottom: 1px solid #000; margin: 4px 0;
+    }
+    .r-stamp {
+      display:inline-block; padding: 3px 10px; font-size: 10px; font-weight:800;
+      letter-spacing: 2px; text-transform: uppercase; transform: rotate(-2deg);
+      border-radius: 2px; margin: 6px 0;
+    }
+    .r-stamp-paid    { border: 2px solid #111; color: #111; }
+    .r-stamp-pending { border: 2px solid #b8860b; color: #b8860b; }
+    .r-stamp-refund  { border: 2px solid #c0392b; color: #c0392b; }
+
+    .r-note { font-size: 9.5px; color:#333; margin-top:6px; }
+    .r-footer { font-size: 10px; text-align:center; margin-top: 8px; }
+
+    /* Action panels (payment / return) — functional, kept below the printable slip */
+    .actions-wrap { width: var(--paper-w); margin: 10px auto 0; font-family: 'DM Sans', Arial, sans-serif; }
+    .section-title { font-size: 10px; letter-spacing: 1px; text-transform: uppercase; font-weight: 700; }
+    .meta-lbl { font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: #666; }
+    .return-qty-input { width: 60px; text-align: center; }
+    .alert-msg { display: none; font-size: 12px; font-weight: 500; }
+
+    @media print {
+      body { background: #fff; }
+      .topbar, .actions-wrap, .refunded-block { display: none !important; }
+      .receipt-wrap { padding: 0; }
+      .receipt { box-shadow: none; width: 80mm; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top Bar -->
+<div class="topbar bg-dark text-white py-2 px-3 d-flex justify-content-center gap-2">
+  <button class="btn btn-sm btn-light fw-semibold" onclick="window.print()">🖨️ Print Invoice</button>
+  <% if (sale.status !== 'refunded') { %>
+  <a href="/sales/<%= sale._id %>/edit" class="btn btn-sm btn-warning fw-semibold">✏️ Edit Bill</a>
+  <% } %>
+  <button class="btn btn-sm btn-outline-secondary" onclick="history.back()">← Back</button>
+</div>
+
+<%
+  const remaining        = (sale.totalAmount || 0) - (sale.amountPaid || 0);
+  const customerWallet   = (sale.customer && sale.customer.walletBalance) ? sale.customer.walletBalance : 0;
+  const totalQty = sale.items.reduce((sum, it) => sum + Number(it.quantity || 0), 0);
+%>
+
+<div class="receipt-wrap">
+  <div class="receipt" id="printArea">
+
+    <!-- Header -->
+    <div class="r-center">
+      <div class="r-title">RASHID SAGIR PHARMACY</div>
+      <!-- TODO: apna phone / license / address yahan confirm karke daal dena -->
+      <div class="r-sub">0324-7575015 : 0321-5691007</div>
+    </div>
+    <div style="text-align:left">
+      <div class="r-sub">21 Amir colony okara</div>
+      <div class="r-sub">LIC # ____________</div>
+    </div>
+
+    <div class="r-line-solid"></div>
+    <div class="r-center"><span class="r-badge">Sale Invoice</span></div>
+    <div class="r-line"></div>
+
+    <!-- Meta -->
+    <div class="r-meta">
+      <div><b>Sale #</b> <%= sale.invoiceNumber %> &nbsp;
+        <%= new Date(sale.createdAt).toLocaleDateString('en-PK', { day:'2-digit', month:'2-digit', year:'numeric' }) %>
+        <%= new Date(sale.createdAt).toLocaleTimeString('en-PK', { hour:'2-digit', minute:'2-digit', hour12:true }) %>
+      </div>
+      <div><b>Customer:</b> <%= sale.customerName %></div>
+      <div><b>Payment:</b> <%= sale.paymentMethod %></div>
+    </div>
+
+    <div class="r-line"></div>
+
+    <!-- Items -->
+    <table class="r-items">
+      <thead>
+        <tr>
+          <th style="width:44%">Item</th>
+          <th class="num">Qty</th>
+          <th class="num">Prc</th>
+          <th class="num">Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% sale.items.forEach((item) => { %>
+        <tr>
+          <td>
+            <div class="r-item-name"><%= item.productName %></div>
+            <% if (item.discountPercent > 0) { %>
+              <div class="r-item-sub">disc <%= item.discountPercent %>%</div>
+            <% } %>
+          </td>
+          <td class="num"><%= item.quantity %></td>
+          <td class="num"><%= Number(item.unitPrice || 0).toLocaleString() %></td>
+          <td class="num"><%= Number(item.total || 0).toLocaleString() %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+
+    <div class="r-line"></div>
+
+    <div class="r-tot-row bold">
+      <span>Items = <%= sale.items.length %></span>
+      <span><%= totalQty %></span>
+      <span><%= Number(sale.subtotal || 0).toLocaleString() %></span>
+    </div>
+
+    <div class="r-tot-row">
+      <span>Discount (Rs.):</span>
+      <span><%= Math.round(Number(sale.discountAmount || 0)).toLocaleString() %></span>
+    </div>
+
+    <% if (typeof previousBalance !== 'undefined' && previousBalance > 0) { %>
+    <div class="r-tot-row">
+      <span>Previous Balance:</span>
+      <span><%= Number(previousBalance).toLocaleString() %></span>
+    </div>
+    <% } %>
+
+    <% if (customerWallet > 0) { %>
+    <div class="r-tot-row">
+      <span>Advance Balance:</span>
+      <span><%= Number(customerWallet).toLocaleString() %></span>
+    </div>
+    <% } %>
+
+    <% if (sale.totalRefunded > 0) { %>
+    <div class="r-tot-row">
+      <span>Refunded:</span>
+      <span>− <%= Number(sale.totalRefunded || 0).toLocaleString() %></span>
+    </div>
+    <% } %>
+
+    <div class="r-net">
+      <span>NET:</span>
+      <span><%= Number(sale.totalAmount || 0).toLocaleString() %></span>
+    </div>
+
+    <% if (typeof previousBalance !== 'undefined' && previousBalance > 0) { %>
+    <div class="r-tot-row bold">
+      <span>Total Balance:</span>
+      <span><%= Number(grandTotalOwed).toLocaleString() %></span>
+    </div>
+    <% } %>
+
+    <div class="r-tot-row">
+      <span>Amount Paid:</span>
+      <span><%= Number(typeof previousBalance !== 'undefined' && previousBalance > 0 ? totalPaidAll : (sale.amountPaid || 0)).toLocaleString() %></span>
+    </div>
+
+    <% if (remaining > 0) { %>
+    <div class="r-tot-row bold">
+      <span><%= (typeof previousBalance !== 'undefined' && previousBalance > 0) ? 'Remaining (Total):' : 'Balance Due:' %></span>
+      <span><%= Number((typeof previousBalance !== 'undefined' && previousBalance > 0) ? totalRemaining : remaining).toLocaleString() %></span>
+    </div>
+    <% } else if (sale.change > 0) { %>
+    <div class="r-tot-row">
+      <span>Advance:</span>
+      <span><%= Number(sale.change || 0).toLocaleString() %></span>
+    </div>
+    <% } else { %>
+    <div class="r-tot-row">
+      <span>Balance Due:</span>
+      <span>0</span>
+    </div>
+    <% } %>
+
+    <!-- Status stamp -->
+    <div class="r-center">
+      <% if (sale.status === 'refunded') { %>
+        <span class="r-stamp r-stamp-refund">✕ Refunded</span>
+      <% } else if (remaining > 0) { %>
+        <span class="r-stamp r-stamp-pending">⏳ Pending</span>
+      <% } else { %>
+        <span class="r-stamp r-stamp-paid">✓ Paid</span>
+      <% } %>
+    </div>
+
+    <% if (sale.notes) { %>
+      <div class="r-line"></div>
+      <div class="r-note"><b>Notes:</b> <%= sale.notes %></div>
+    <% } %>
+
+    <div class="r-line"></div>
+    <div class="r-note r-left">
+      ➤ Returns/Exchanges within 7 days with original invoice and saleable condition.<br>
+     ➤ No return/exchange on refrigerated items, inhalers, diagnostic strips, formula milk, loose meds and electronics.
+    </div>
+
+    <div class="r-line"></div>
+    <div class="r-footer">
+      <div>Software Trade 365</div>
+      <div>Powered By Alhamd Developer: 0326-1462655</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Action Sections (screen-only, hidden on print) -->
+<div class="actions-wrap d-flex flex-column gap-2">
+
+  <!-- Credit Payment -->
+  <% if (remaining > 0 && sale.status !== 'refunded') { %>
+  <% const currentRemaining = Math.max(0, (sale.totalAmount || 0) - (sale.amountPaid || 0)); %>
+  <% const outstandingToShow = (typeof previousBalance !== 'undefined' && previousBalance > 0) ? totalRemaining : currentRemaining; %>
+  <% if (outstandingToShow > 0 && currentRemaining > 0) { %>
+  <div class="border border-primary rounded p-2" style="background:#f0f5fd">
+    <div class="section-title text-primary mb-1">💳 Receive Payment</div>
+    <div class="text-muted mb-2" style="font-size:11px">
+      Outstanding: <strong class="text-primary">Rs. <%= Number(outstandingToShow).toLocaleString() %></strong>
+    </div>
+
+    <div class="mb-2">
+      <label class="meta-lbl">Payment Method</label>
+      <select id="paymentMethodSelect" class="form-select form-select-sm mt-1" onchange="togglePaymentBank()">
+        <option value="cash">💵 Cash</option>
+        <option value="bank">🏦 Bank Transfer</option>
+      </select>
+    </div>
+
+    <div class="mb-2" id="paymentBankRow" style="display:none">
+      <label class="meta-lbl">Bank Account</label>
+      <select id="paymentBankAccount" class="form-select form-select-sm mt-1">
+        <option value="">— Select Bank —</option>
+        <% if (typeof bankAccounts !== 'undefined') { %>
+          <% bankAccounts.forEach(acc => { %>
+            <option value="<%= acc._id %>"><%= acc.bankName %> — <%= acc.accountTitle %></option>
+          <% }) %>
+        <% } %>
+      </select>
+    </div>
+
+    <div class="d-flex gap-2 flex-wrap">
+      <input type="number" id="paymentAmount" class="form-control form-control-sm flex-grow-1" style="min-width:120px"
+        placeholder="Enter amount (Rs.)" min="1" max="<%= outstandingToShow %>"/>
+      <button class="btn btn-sm btn-primary fw-semibold" id="paymentBtn" onclick="addPayment('<%= sale._id %>')">Save Payment</button>
+    </div>
+    <div class="alert-msg mt-2 p-2 rounded" id="paymentMsg"></div>
+  </div>
+  <% } %>
+  <% } %>
+
+  <!-- Return Section -->
+  <% if (sale.status !== 'refunded') { %>
+  <div class="border border-danger rounded p-2" style="background:#fdf3f2">
+    <div class="section-title text-danger mb-2">↩ Process Return / Refund</div>
+
+    <% if (sale.returnedItems && sale.returnedItems.length > 0) { %>
+    <div class="mb-2">
+      <div class="meta-lbl text-danger mb-1">📋 Return History</div>
+      <table class="table table-sm mb-0" style="font-size:11px">
+        <thead style="background:#fdecea">
+          <tr>
+            <th style="width:40%">Medicine</th>
+            <th class="text-end">Qty</th>
+            <th class="text-end">Refund</th>
+            <th class="text-end">Date</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% sale.returnedItems.forEach(r => { %>
+          <tr>
+            <td><%= r.productName %></td>
+            <td class="text-end"><%= r.quantity %></td>
+            <td class="text-end">Rs. <%= Number(r.refundAmount || 0).toLocaleString() %></td>
+            <td class="text-end text-muted" style="font-size:9px">
+              <%= new Date(r.returnedAt).toLocaleDateString('en-PK', {day:'numeric', month:'short', year:'numeric'}) %>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+
+    <div class="meta-lbl mb-1">Select Items to Return</div>
+    <%
+      let anyReturnable = false;
+      sale.items.forEach((item) => {
+        const alreadyReturned = (sale.returnedItems || [])
+          .filter(r => r.product && r.product.toString() === item.product.toString())
+          .reduce((sum, r) => sum + r.quantity, 0);
+        const maxReturnable = item.quantity - alreadyReturned;
+        if (maxReturnable > 0) anyReturnable = true;
+    %>
+      <% if (maxReturnable > 0) { %>
+      <div class="d-flex align-items-center justify-content-between gap-2 border-bottom py-1" style="border-color:#f5c6c2!important">
+        <div>
+          <div style="font-size:12px"><%= item.productName %></div>
+          <div class="text-muted" style="font-size:9px">Max: <%= maxReturnable %></div>
+        </div>
+        <input type="number" class="form-control form-control-sm return-qty-input"
+          min="0" max="<%= maxReturnable %>" value="0"
+          data-product-id="<%= item.product %>" data-max="<%= maxReturnable %>"/>
+      </div>
+      <% } %>
+    <% }) %>
+
+    <% if (anyReturnable) { %>
+    <div class="d-flex gap-2 mt-2 flex-wrap">
+      <button class="btn btn-sm btn-danger fw-semibold" id="returnBtn" onclick="processReturn('<%= sale._id %>')">↩ Return Selected</button>
+      <button class="btn btn-sm btn-outline-danger fw-semibold" id="fullRefundBtn" onclick="processFullRefund('<%= sale._id %>')">💰 Full Refund</button>
+    </div>
+    <% } else { %>
+    <p class="text-muted mt-1 mb-0" style="font-size:11px">All items have already been returned.</p>
+    <% } %>
+
+    <div class="alert-msg mt-2 p-2 rounded" id="returnMsg"></div>
+  </div>
+  <% } %>
+
+</div>
+
+<!-- Fully Refunded -->
+<% if (sale.status === 'refunded') { %>
+<div class="refunded-block actions-wrap p-3 border border-danger rounded text-center" style="background:#fdf3f2">
+  <h3 class="text-danger mb-1" style="font-size:15px">✕ Sale Fully Refunded</h3>
+  <p class="text-muted mb-0" style="font-size:11px">Total Refund: Rs. <%= Number(sale.totalRefunded || 0).toLocaleString() %></p>
+</div>
+<% } %>
+
+<script>
+  function showAlert(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = `alert-msg mt-2 p-2 rounded ${type === 'success' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger'}`;
+    el.style.display = 'block';
+    if (type === 'success') setTimeout(() => el.style.display = 'none', 4000);
+  }
+
+  function setBtn(id, disabled, text) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.disabled = disabled;
+    btn.textContent = text;
+  }
+
+  function togglePaymentBank() {
+    const method = document.getElementById('paymentMethodSelect').value;
+    const bankRow = document.getElementById('paymentBankRow');
+    if (bankRow) bankRow.style.display = method === 'bank' ? 'block' : 'none';
+  }
+
+  async function addPayment(saleId) {
+    const input   = document.getElementById('paymentAmount');
+    const amount  = parseFloat(input.value);
+    const method  = document.getElementById('paymentMethodSelect').value;
+    const bankId  = document.getElementById('paymentBankAccount')?.value || '';
+
+    if (!amount || amount <= 0) { showAlert('paymentMsg', 'Valid amount enter karo', 'error'); return; }
+    if (method === 'bank' && !bankId) { showAlert('paymentMsg', 'Bank account select karo', 'error'); return; }
+
+    setBtn('paymentBtn', true, 'Saving...');
+    try {
+      const res = await fetch(`/sales/${saleId}/payment`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, paymentMethod: method, bankAccountId: bankId })
+      });
+      const data = await res.json();
+      if (data.success) {
+        let msg = `✓ Rs. ${amount.toLocaleString()} payment (${method}) save ho gayi`;
+        if (data.advanceAdded > 0) {
+          msg += ` — Rs. ${data.advanceAdded.toLocaleString()} advance wallet mein add ho gaya`;
+        }
+        showAlert('paymentMsg', msg, 'success');
+        setTimeout(() => location.reload(), 2000);
+      } else {
+        showAlert('paymentMsg', data.error || 'Error hua', 'error');
+        setBtn('paymentBtn', false, 'Save Payment');
+      }
+    } catch (err) {
+      showAlert('paymentMsg', 'Server error: ' + err.message, 'error');
+      setBtn('paymentBtn', false, 'Save Payment');
+    }
+  }
+
+  async function processReturn(saleId) {
+    const inputs = document.querySelectorAll('.return-qty-input');
+    const returnItems = [];
+    inputs.forEach(input => {
+      const qty = parseInt(input.value) || 0;
+      const max = parseInt(input.dataset.max) || 0;
+      if (qty > 0) returnItems.push({ productId: input.dataset.productId, quantity: Math.min(qty, max) });
+    });
+    if (returnItems.length === 0) { showAlert('returnMsg', 'Kam az kam ek item ki quantity likho', 'error'); return; }
+    setBtn('returnBtn', true, 'Processing...');
+    try {
+      const res = await fetch(`/sales/${saleId}/return`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ returnItems })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showAlert('returnMsg', `✓ ${data.message}`, 'success');
+        setTimeout(() => location.reload(), 2000);
+      } else {
+        showAlert('returnMsg', data.error || 'Kuch ghalat hua', 'error');
+        setBtn('returnBtn', false, '↩ Return Selected');
+      }
+    } catch (err) {
+      showAlert('returnMsg', 'Server error: ' + err.message, 'error');
+      setBtn('returnBtn', false, '↩ Return Selected');
+    }
+  }
+
+  async function processFullRefund(saleId) {
+    if (!confirm('Kya aap sure hain? Poori sale refund ho jaegi.')) return;
+    const returnItems = Array.from(document.querySelectorAll('.return-qty-input'))
+      .map(input => ({ productId: input.dataset.productId, quantity: parseInt(input.dataset.max) || 0 }))
+      .filter(item => item.quantity > 0);
+    if (returnItems.length === 0) { showAlert('returnMsg', 'Koi returnable item nahi', 'error'); return; }
+    setBtn('fullRefundBtn', true, 'Processing...');
+    setBtn('returnBtn', true, '↩ Return Selected');
+    try {
+      const res = await fetch(`/sales/${saleId}/return`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ returnItems })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showAlert('returnMsg', `✓ ${data.message}`, 'success');
+        setTimeout(() => location.reload(), 2000);
+      } else {
+        showAlert('returnMsg', data.error || 'Kuch ghalat hua', 'error');
+        setBtn('fullRefundBtn', false, '💰 Full Refund');
+        setBtn('returnBtn', false, '↩ Return Selected');
+      }
+    } catch (err) {
+      showAlert('returnMsg', 'Server error: ' + err.message, 'error');
+      setBtn('fullRefundBtn', false, '💰 Full Refund');
+      setBtn('returnBtn', false, '↩ Return Selected');
+    }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Medicines & Inventory</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f4f5f7; font-size: 14px; }
+    .main { margin-left: 220px; }
+    .topbar { position: sticky; top: 0; z-index: 50; }
+    .stat-card { border-top: 3px solid transparent; }
+    .stat-card.blue { border-top-color: #1a6fbc; }
+    .stat-card.orange { border-top-color: #c87000; }
+    .stat-card.pink { border-top-color: #8e44ad; }
+    .stat-card.green { border-top-color: #1e7e34; }
+    .stat-card.red { border-top-color: #b02a37; }
+    .stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500; }
+    .stat-value { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+    @media(max-width:768px) { .main { margin-left: 60px; } }
+  </style>
+</head>
+
+<body>
+
+  <%- include('../partials/sidebar') %>
+
+  <main class="main">
+
+    <div class="topbar bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between shadow-sm">
+      <h2 class="fs-6 fw-semibold mb-0">💊 Medicines & Inventory</h2>
+      <!-- <a href="/products/add" class="btn btn-primary btn-sm">+ Add Medicine</a> -->
+    </div>
+
+    <div class="p-4">
+
+      <%# Summary Cards %>
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-lg-3">
+          <div class="card stat-card blue h-100 p-3 shadow-sm position-relative overflow-hidden">
+            <div class="stat-label text-muted mb-2">Total Medicines</div>
+            <div class="stat-value"><%= medicines.length %></div>
+            <div class="small text-muted mt-1">Active items</div>
+            <span class="position-absolute" style="bottom:12px;right:14px;font-size:26px;opacity:0.15;">💊</span>
+          </div>
+        </div>
+        <div class="col-6 col-lg-3">
+          <a href="/products?filter=lowstock" class="text-decoration-none">
+            <div class="card stat-card orange h-100 p-3 shadow-sm position-relative overflow-hidden">
+              <div class="stat-label text-muted mb-2">Low Stock</div>
+              <div class="stat-value"><%= lowStock.length %></div>
+              <div class="small text-muted mt-1">Need restocking</div>
+              <span class="position-absolute" style="bottom:12px;right:14px;font-size:26px;opacity:0.15;">⚠️</span>
+            </div>
+          </a>
+        </div>
+        <div class="col-6 col-lg-3">
+          <a href="/products?filter=outofstock" class="text-decoration-none">
+            <div class="card stat-card pink h-100 p-3 shadow-sm position-relative overflow-hidden">
+              <div class="stat-label text-muted mb-2">Out of Stock</div>
+              <div class="stat-value"><%= outOfStock.length %></div>
+              <div class="small text-muted mt-1">Zero stock items</div>
+              <span class="position-absolute" style="bottom:12px;right:14px;font-size:26px;opacity:0.15;">🚫</span>
+            </div>
+          </a>
+        </div>
+        <div class="col-6 col-lg-3">
+          <a href="/products/inventory-report" class="text-decoration-none">
+            <div class="card stat-card green h-100 p-3 shadow-sm position-relative overflow-hidden" style="cursor:pointer;">
+              <div class="stat-label text-muted mb-2">Inventory Value</div>
+              <div class="stat-value" style="font-size:1.2rem;">Rs. <%= totalValue.toLocaleString() %></div>
+              <div class="small text-muted mt-1">At purchase price</div>
+              <div class="small text-success mt-1" style="font-size:11px;">📊 Full report dekhein →</div>
+              <span class="position-absolute" style="bottom:12px;right:14px;font-size:26px;opacity:0.15;">💎</span>
+            </div>
+          </a>
+        </div>
+      </div>
+
+      <%# Search Bar %>
+      <div class="d-flex gap-2 mb-3 align-items-center">
+        <div class="input-group flex-grow-1">
+          <span class="input-group-text bg-white border-end-0">🔍</span>
+          <input type="text" id="productSearch" class="form-control border-start-0" placeholder="Search medicines by name or barcode..." autocomplete="off">
+        </div>
+        <select id="categoryFilter" class="form-select" style="width:200px;">
+          <option value="">All Categories</option>
+          <% categories.forEach(c=> { %>
+            <option value="<%= c %>"><%= c %></option>
+          <% }) %>
+        </select>
+      </div>
+
+      <%# Medicines Table %>
+      <div class="card shadow-sm">
+        <div class="card-header bg-light d-flex align-items-center justify-content-between py-3">
+          <h6 class="mb-0 fw-semibold">All Medicines</h6>
+          <span id="productCount" class="badge bg-light text-secondary border border-secondary-subtle px-3">
+            <%= medicines.length %> items
+          </span>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="text-uppercase small text-muted fw-semibold px-3">Medicine</th>
+                <th class="text-uppercase small text-muted fw-semibold">Manufacturer</th>
+                <th class="text-uppercase small text-muted fw-semibold">Category</th>
+                <th class="text-uppercase small text-muted fw-semibold">Purchase</th>
+                <th class="text-uppercase small text-muted fw-semibold">Selling</th>
+                <th class="text-uppercase small text-muted fw-semibold">Profit</th>
+                <th class="text-uppercase small text-muted fw-semibold">Stock</th>
+                <th class="text-uppercase small text-muted fw-semibold">Status</th>
+                <th class="text-uppercase small text-muted fw-semibold">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="productTableBody">
+              <% if (medicines.length===0) { %>
+                <tr>
+                  <td colspan="9" class="text-center text-muted py-5">
+                    No medicines found. <a href="/products/add" class="text-warning">Add one</a>
+                  </td>
+                </tr>
+              <% } %>
+              <% medicines.forEach(p=> { %>
+                <tr data-name="<%= p.name.toLowerCase() %>" data-barcode="<%= (p.barcode || '').toLowerCase() %>" data-category="<%= p.category %>">
+                  <td class="px-3">
+                    <div class="fw-bold">
+                      <%= p.name %>
+                      <% if (p.requiresPrescription) { %><span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-1" style="font-size:9px;">Rx</span><% } %>
+                    </div>
+                    <% if (p.genericName) { %><div class="text-muted small"><%= p.genericName %></div><% } %>
+                    <% if (p.barcode) { %><div class="text-muted small">🏷️ <%= p.barcode %></div><% } %>
+                  </td>
+                  <td><span class="badge bg-info-subtle text-info border border-info-subtle"><%= p.manufacturer %></span></td>
+                  <td><span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle"><%= p.category %></span></td>
+
+                  <td>
+                    <% var bp=p.purchasePrice; %>
+                    Rs. <%= bp.toLocaleString() %>
+                    <div style="font-size:10px;" class="text-muted">per tablet</div>
+                  </td>
+
+                  <td class="fw-bold">
+                    <% var sp=p.sellingPrice; %>
+                    Rs. <%= sp.toLocaleString() %>
+                  </td>
+
+                  <td>
+                    <% var profit=sp - bp; var profPct=bp> 0 ? ((profit/bp)*100).toFixed(1) : 0; %>
+                    <span class="text-success">Rs. <%= profit.toLocaleString() %></span>
+                    <div class="text-muted small"><%= profPct %>%</div>
+                  </td>
+
+                  <td style="min-width:120px;">
+                    <% var stockStatus=p.stockBoxes===0 ? 'danger' : p.stockBoxes <=p.minStockBoxes ? 'warning' : 'success';
+                       var stockLabel=p.stockBoxes===0 ? 'Out of Stock' : p.stockBoxes <=p.minStockBoxes ? 'Low Stock' : 'In Stock'; %>
+                    <span class="badge bg-<%= stockStatus %><%= stockStatus==='warning'?' text-dark':'' %> mb-1" style="font-size:10px;">
+                      <%= stockLabel %>
+                    </span>
+                    <div class="d-flex align-items-center gap-1 mt-1">
+                      <span class="fw-semibold" style="font-size:12px; color:#0d6efd;"><%= Number(p.stockBoxes.toFixed(2)) %> units</span>
+                    </div>
+                  </td>
+
+                  <td>
+                    <span class="badge <%= p.isActive ? 'bg-success' : 'bg-danger' %>">
+                      <%= p.isActive ? 'Active' : 'Inactive' %>
+                    </span>
+                  </td>
+
+                  <td>
+                    <div class="d-flex gap-1">
+                      <a href="/products/<%= p._id %>/edit" class="btn btn-outline-secondary btn-sm">✏️ Edit</a>
+                      <form action="/products/<%= p._id %>?_method=DELETE" method="POST" onsubmit="return confirm('Delete this medicine?')">
+                        <button type="submit" class="btn btn-danger btn-sm">🗑</button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    let searchTimeout;
+    document.getElementById('productSearch').addEventListener('input', function () {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => filterTable(), 300);
+    });
+    document.getElementById('categoryFilter').addEventListener('change', filterTable);
+
+    function filterTable() {
+      const q = document.getElementById('productSearch').value.trim().toLowerCase();
+      const selectedCategory = document.getElementById('categoryFilter').value;
+      const rows = document.querySelectorAll('#productTableBody tr[data-name]');
+      const countBadge = document.getElementById('productCount');
+      let visibleCount = 0;
+
+      rows.forEach(row => {
+        const name = row.dataset.name || '';
+        const barcode = row.dataset.barcode || '';
+        const category = row.dataset.category || '';
+        const matchSearch = name.includes(q) || barcode.includes(q);
+        const matchCategory = selectedCategory === '' || category === selectedCategory;
+        const visible = matchSearch && matchCategory;
+        row.style.display = visible ? '' : 'none';
+        if (visible) visibleCount++;
+      });
+
+      countBadge.textContent = `${visibleCount} items`;
+
+      const noDataRow = document.getElementById('noDataRow');
+      if (visibleCount === 0) {
+        if (!noDataRow) {
+          const tbody = document.getElementById('productTableBody');
+          const tr = document.createElement('tr');
+          tr.id = 'noDataRow';
+          tr.innerHTML = `<td colspan="10" class="text-center text-muted py-5">No medicines found matching your search.</td>`;
+          tbody.appendChild(tr);
+        }
+      } else {
+        if (noDataRow) noDataRow.remove();
+      }
+    }
+  </script>
+
+</body>
+</html>

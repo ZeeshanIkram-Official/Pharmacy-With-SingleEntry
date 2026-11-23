@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sale Returns</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f4f5f7; font-size: 14px; }
+    .main { margin-left: 220px; }
+    .topbar { position: sticky; top: 0; z-index: 50; }
+    .stat-card { border-top: 3px solid transparent; }
+    .stat-card.blue { border-top-color: #1a6fbc; }
+    .stat-card.red { border-top-color: #b02a37; }
+    .stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.8px; font-weight: 500; }
+    .stat-value { font-size: 1.4rem; font-weight: 700; line-height: 1; }
+    @media(max-width:768px){ .main{ margin-left:60px; } }
+  </style>
+</head>
+<body>
+
+<%- include('../partials/sidebar') %>
+
+<main class="main">
+
+  <div class="topbar bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between shadow-sm">
+    <h2 class="fs-6 fw-semibold mb-0">↩️ Sale Returns</h2>
+    <a href="/sale-returns/open/new" class="btn btn-primary btn-sm">+ Walk-in Return (Bina Invoice)</a>
+  </div>
+
+  <div class="p-4">
+
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-lg-4">
+        <div class="card stat-card blue h-100 p-3 shadow-sm">
+          <div class="stat-label text-muted mb-2">Total Returns</div>
+          <div class="stat-value"><%= returns.length %></div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-4">
+        <div class="card stat-card red h-100 p-3 shadow-sm">
+          <div class="stat-label text-muted mb-2">Open (Bina Invoice)</div>
+          <div class="stat-value"><%= openCount %></div>
+          <div class="small text-muted mt-1">Internal audit ke liye track karein</div>
+        </div>
+      </div>
+      <div class="col-6 col-lg-4">
+        <div class="card stat-card h-100 p-3 shadow-sm">
+          <div class="stat-label text-muted mb-2">Total Refunded</div>
+          <div class="stat-value" style="font-size:1.2rem;">Rs. <%= totalRefunded.toLocaleString() %></div>
+        </div>
+      </div>
+    </div>
+
+    <form class="d-flex flex-wrap gap-2 mb-3 align-items-center" method="GET">
+      <input type="text" name="search" value="<%= search %>" class="form-control form-control-sm" style="width:220px;" placeholder="Return #, Invoice #, ya Customer">
+      <select name="returnType" class="form-select form-select-sm" style="width:180px;">
+        <option value="">All Types</option>
+        <option value="linked" <%= returnType==='linked' ? 'selected' : '' %>>Linked (Invoice)</option>
+        <option value="open" <%= returnType==='open' ? 'selected' : '' %>>Open (Walk-in)</option>
+      </select>
+      <input type="date" name="dateFrom" value="<%= dateFrom %>" class="form-control form-control-sm" style="width:150px;">
+      <input type="date" name="dateTo" value="<%= dateTo %>" class="form-control form-control-sm" style="width:150px;">
+      <button type="submit" class="btn btn-outline-secondary btn-sm">Filter</button>
+      <a href="/sale-returns" class="btn btn-outline-secondary btn-sm">Reset</a>
+    </form>
+
+    <div class="card shadow-sm">
+      <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="px-3 small text-uppercase text-muted">Return #</th>
+              <th class="small text-uppercase text-muted">Type</th>
+              <th class="small text-uppercase text-muted">Invoice #</th>
+              <th class="small text-uppercase text-muted">Customer</th>
+              <th class="small text-uppercase text-muted">Items</th>
+              <th class="small text-uppercase text-muted">Refund</th>
+              <th class="small text-uppercase text-muted">Mode</th>
+              <th class="small text-uppercase text-muted">Date</th>
+              <th class="small text-uppercase text-muted">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% if (returns.length === 0) { %>
+              <tr><td colspan="9" class="text-center text-muted py-5">Koi return record nahi mila.</td></tr>
+            <% } %>
+            <% returns.forEach(r => { %>
+              <tr>
+                <td class="px-3 fw-bold"><%= r.returnNumber %></td>
+                <td>
+                  <% if (r.returnType === 'open') { %>
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">Open (No Invoice)</span>
+                  <% } else { %>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle">Linked</span>
+                  <% } %>
+                </td>
+                <td><%= r.originalInvoiceNumber || '—' %></td>
+                <td><%= r.customerName %></td>
+                <td><%= r.items.length %> item(s)</td>
+                <td class="fw-semibold text-danger">Rs. <%= r.totalRefundAmount.toLocaleString() %></td>
+                <td><span class="text-muted small text-capitalize"><%= r.refundMode %></span></td>
+                <td class="text-muted small"><%= moment(r.createdAt).format('DD MMM, hh:mm A') %></td>
+                <td><a href="/sale-returns/<%= r._id %>" class="btn btn-outline-secondary btn-sm">View</a></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+</body>
+</html>

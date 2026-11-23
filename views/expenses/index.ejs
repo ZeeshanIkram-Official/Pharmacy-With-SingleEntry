@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Expenses — Alhamd Pharmacy</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+
+<%- include('../partials/sidebar') %>
+
+<div class="main">
+  <div class="d-flex justify-content-between align-items-center px-4 py-3 bg-white border-bottom shadow-sm">
+    <h5 class="mb-0 fw-bold">💸 Expenses</h5>
+    <a href="/expenses/add" class="btn btn-primary btn-sm">+ Expense Add Karein</a>
+  </div>
+
+  <div class="container-fluid px-4 py-3">
+
+    <%# Flash Messages %>
+    <% if (success && success.length) { %>
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <%= success %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    <% } %>
+    <% if (error && error.length) { %>
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <%= error %>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+      </div>
+    <% } %>
+
+    <%# Summary Cards %>
+    <div class="row g-3 mb-4">
+      <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="text-muted small text-uppercase fw-semibold mb-1">Kul Kharch</div>
+            <div class="fs-4 fw-bold text-danger">Rs <%= totalAmount.toLocaleString('en-PK') %></div>
+            <div class="text-muted small"><%= expenses.length %> records</div>
+          </div>
+          <div class="card-footer p-0" style="height:3px; background:#dc3545;"></div>
+        </div>
+      </div>
+      <% categoryTotals.slice(0, 3).forEach((ct, i) => {
+        const cat = CATEGORIES.find(c => c.value === ct._id) || { label: ct._id };
+        const colors = ['#fd7e14','#0d6efd','#198754'];
+      %>
+      <div class="col-6 col-md-3">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <div class="text-muted small text-uppercase fw-semibold mb-1"><%= cat.label %></div>
+            <div class="fs-5 fw-bold">Rs <%= ct.total.toLocaleString('en-PK') %></div>
+            <div class="text-muted small"><%= ct.count %> dafa</div>
+          </div>
+          <div class="card-footer p-0" style="height:3px; background:<%= colors[i] %>;"></div>
+        </div>
+      </div>
+      <% }) %>
+    </div>
+
+    <%# Filters %>
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <form method="GET" action="/expenses" class="row g-2 align-items-end">
+          <div class="col-12 col-md-2">
+            <label class="form-label small fw-semibold mb-1">Category</label>
+            <select name="category" class="form-select form-select-sm">
+              <option value="">-- Sab --</option>
+              <% CATEGORIES.forEach(c => { %>
+                <option value="<%= c.value %>" <%= filters.category === c.value ? 'selected' : '' %>><%= c.label %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label small fw-semibold mb-1">Payment</label>
+            <select name="paymentMethod" class="form-select form-select-sm">
+              <option value="">-- Sab --</option>
+              <option value="cash"   <%= filters.paymentMethod === 'cash'   ? 'selected' : '' %>>💵 Cash</option>
+              <option value="bank"   <%= filters.paymentMethod === 'bank'   ? 'selected' : '' %>>🏦 Bank</option>
+              
+            </select>
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label small fw-semibold mb-1">From Date</label>
+            <input type="date" name="from" class="form-control form-control-sm" value="<%= filters.from || '' %>">
+          </div>
+          <div class="col-6 col-md-2">
+            <label class="form-label small fw-semibold mb-1">To Date</label>
+            <input type="date" name="to" class="form-control form-control-sm" value="<%= filters.to || '' %>">
+          </div>
+          <div class="col-6 col-md-4 d-flex gap-2">
+            <button type="submit" class="btn btn-primary btn-sm">🔍 Filter</button>
+            <a href="/expenses" class="btn btn-outline-secondary btn-sm">Reset</a>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <%# Expenses Table %>
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+        <span class="fw-semibold">📋 Expense List</span>
+        <span class="text-muted small"><%= expenses.length %> records</span>
+      </div>
+
+      <% if (expenses.length === 0) { %>
+        <div class="text-center py-5 text-muted">
+          <div style="font-size:2.5rem; opacity:0.3;">💸</div>
+          <p class="mt-2 mb-1 fw-semibold">Koi expense nahi mila</p>
+          <a href="/expenses/add" class="btn btn-sm btn-primary mt-2">+ Pehla expense add karein</a>
+        </div>
+      <% } else { %>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="small text-uppercase text-muted fw-semibold">Tarikh</th>
+                <th class="small text-uppercase text-muted fw-semibold">Category</th>
+                <th class="small text-uppercase text-muted fw-semibold">Description</th>
+                <th class="small text-uppercase text-muted fw-semibold">Payment</th>
+                <th class="small text-uppercase text-muted fw-semibold">Added By</th>
+                <th class="small text-uppercase text-muted fw-semibold text-end">Amount</th>
+                <th class="small text-uppercase text-muted fw-semibold text-center">Receipt</th>
+                <th class="small text-uppercase text-muted fw-semibold text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% expenses.forEach(exp => {
+                const cat = CATEGORIES.find(c => c.value === exp.category) || { label: exp.category };
+                const badgeMap = {
+                  petrol:'bg-warning text-dark', food:'bg-info text-dark',
+                  services:'bg-primary', rent:'bg-secondary', electricity:'bg-warning text-dark',
+                  salary:'bg-success', maintenance:'bg-danger', stationery:'bg-primary',
+                  transport:'bg-info text-dark', other:'bg-secondary'
+                };
+                const badge = badgeMap[exp.category] || 'bg-secondary';
+              %>
+              <tr>
+                <td class="text-muted small" style="white-space:nowrap;">
+                  <%= new Date(exp.date).toLocaleDateString('en-PK', { day:'2-digit', month:'short', year:'numeric' }) %>
+                </td>
+                <td>
+                  <span class="badge <%= badge %>"><%= cat.label %></span>
+                </td>
+                <td class="text-muted small" style="max-width:180px;">
+                  <%= exp.description || '—' %>
+                </td>
+                <td class="small">
+                  <% if (exp.paymentMethod === 'cash') { %>💵 Cash
+                  <% } else if (exp.paymentMethod === 'bank') { %>
+                    🏦 Bank
+                    <% if (exp.bankAccount) { %>
+                      <div class="text-muted" style="font-size:0.7rem;"><%= exp.bankAccount.bankName %> — <%= exp.bankAccount.accountTitle %></div>
+                    <% } %>
+                  <% } else if (exp.paymentMethod === 'card') { %>💳 Card
+                  <% } else { %>📲 Online<% } %>
+                </td>
+                <td class="text-muted small"><%= exp.addedBy %></td>
+                <td class="text-end fw-bold text-danger">
+                  Rs <%= exp.amount.toLocaleString('en-PK') %>
+                </td>
+                <td class="text-center">
+                  <% if (exp.receiptImage) { %>
+                    <a href="<%= exp.receiptImage %>" target="_blank" class="btn btn-sm btn-outline-secondary">🖼️</a>
+                  <% } else { %>
+                    <span class="text-muted">—</span>
+                  <% } %>
+                </td>
+                <td class="text-center">
+                  <form action="/expenses/delete/<%= exp._id %>" method="POST"
+                        onsubmit="return confirm('Yeh expense delete karein?');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">🗑️</button>
+                  </form>
+                </td>
+              </tr>
+              <% }) %>
+            </tbody>
+            <tfoot class="table-light">
+              <tr>
+                <td colspan="5" class="fw-bold py-3">Total Kharch</td>
+                <td class="text-end fw-bold text-danger fs-6">Rs <%= totalAmount.toLocaleString('en-PK') %></td>
+                <td colspan="2"></td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      <% } %>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

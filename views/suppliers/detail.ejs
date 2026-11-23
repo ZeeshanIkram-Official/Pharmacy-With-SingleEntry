@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title><%= supplier.name %> — Supplier Ledger</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<style>
+  body{ background:#f4f5f7; color:#212529; font-size:14px; }
+  .mono{ font-family: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace; }
+  .main{ margin-left:220px; }
+  @media(max-width:768px){ .main{ margin-left:60px; } }
+
+  .topbar{
+    background:#fff; border-bottom:1px solid #dee2e6;
+    padding:18px 28px; display:flex; align-items:center; justify-content:space-between;
+    position:sticky; top:0; z-index:30;
+  }
+  .topbar .eyebrow{ font-size:9px; letter-spacing:2.5px; text-transform:uppercase; color:#6c757d; }
+  .topbar h1{ font-size:20px; font-weight:600; margin:2px 0 0; }
+
+  .wrap{ max-width:980px; margin:0 auto; padding:28px; }
+
+  /* ── Ledger hero ── */
+  .ledger{
+    background:#212529; color:#fff; border-radius:6px;
+    padding:26px 30px; display:flex; align-items:flex-end; justify-content:space-between;
+    gap:24px; flex-wrap:wrap; margin-bottom:22px;
+  }
+  .ledger .who{ font-size:11px; letter-spacing:2px; text-transform:uppercase; color:rgba(255,255,255,.55); margin-bottom:6px; }
+  .ledger .since{ font-size:12px; color:rgba(255,255,255,.55); margin-top:4px; }
+  .ledger .balance-label{ font-size:10px; letter-spacing:2px; text-transform:uppercase; opacity:.75; margin-bottom:4px; }
+  .ledger .balance-value{ font-size:30px; font-weight:700; line-height:1; }
+  .ledger .balance-value.owes{ color:#ff8a80; }
+  .ledger .balance-value.settled{ color:#fff; }
+  .ledger .balance-tag{ font-size:11px; margin-top:6px; opacity:.7; }
+
+  .info-strip{
+    background:#fff; border:1px solid #dee2e6; border-radius:6px;
+    display:grid; grid-template-columns:repeat(4,1fr); margin-bottom:22px; overflow:hidden;
+  }
+  .info-strip .cell{ padding:14px 16px; border-right:1px solid #dee2e6; }
+  .info-strip .cell:last-child{ border-right:none; }
+  .info-strip .lbl{ font-size:9px; letter-spacing:1.8px; text-transform:uppercase; color:#6c757d; margin-bottom:3px; }
+  .info-strip .val{ font-size:13px; font-weight:600; }
+  @media(max-width:700px){ .info-strip{ grid-template-columns:repeat(2,1fr); } .info-strip .cell:nth-child(2){ border-right:none; } }
+
+  .metrics{ display:flex; gap:14px; margin-bottom:22px; flex-wrap:wrap; }
+  .metric{ flex:1; min-width:160px; background:#fff; border:1px solid #dee2e6; border-radius:6px; padding:14px 16px; }
+  .metric .lbl{ font-size:9px; letter-spacing:1.8px; text-transform:uppercase; color:#6c757d; margin-bottom:6px; }
+  .metric .val{ font-size:20px; font-weight:700; }
+
+  .section-title{
+    font-size:10px; letter-spacing:2.5px; text-transform:uppercase; font-weight:700;
+    color:#6c757d; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between;
+  }
+
+  /* ── Pay box ── */
+  .pay-box{
+    background:#f0f5fd; border:1px solid #9ec5fe; border-radius:6px;
+    padding:18px 20px; margin-bottom:22px;
+  }
+  .pay-box .section-title{ color:#0d6efd; }
+  .form-label-sm{ font-size:11px; font-weight:600; color:#555; letter-spacing:.6px; text-transform:uppercase; margin-bottom:4px; display:block; }
+
+  .ledger-table{ background:#fff; border:1px solid #dee2e6; border-radius:6px; overflow:hidden; }
+  table{ width:100%; border-collapse:collapse; }
+  thead th{
+    font-size:9px; letter-spacing:1.8px; text-transform:uppercase; color:#6c757d; font-weight:700;
+    text-align:left; padding:10px 16px; border-bottom:2px solid #212529;
+  }
+  thead th.num, td.num{ text-align:right; }
+  tbody td{ padding:11px 16px; border-bottom:1px solid #dee2e6; font-size:13px; vertical-align:middle; }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody tr:hover{ background:#f8f9fa; }
+  .pm-badge{
+    font-size:10px; padding:3px 9px; border-radius:20px; font-weight:600; text-transform:capitalize;
+    background:#eef2f6; color:#3c5366; display:inline-block;
+  }
+  .amt{ font-weight:700; }
+  .empty-row{ text-align:center; padding:50px 20px; color:#6c757d; font-size:13px; }
+
+  .btn-outline-ink{ border:1px solid #ced4da; color:#212529; background:#fff; font-size:13px; padding:7px 16px; border-radius:5px; }
+  .btn-outline-ink:hover{ background:#e9ecef; color:#212529; }
+  .alert-msg{ font-size:12.5px; display:none; }
+  .alert-msg.show{ display:block; }
+</style>
+</head>
+<body>
+
+<%- include('../partials/sidebar') %>
+
+<main class="main">
+
+  <div class="topbar">
+    <div>
+      <div class="eyebrow">Supplier Ledger</div>
+      <h1><%= supplier.name %></h1>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="/suppliers/edit/<%= supplier._id %>" class="btn-outline-ink">✏️ Edit</a>
+      <a href="/suppliers" class="btn-outline-ink">← Back</a>
+    </div>
+  </div>
+
+  <div class="wrap">
+
+    <%
+      const remaining = supplier.balance || 0;
+    %>
+
+    <!-- ── Flash Messages ── -->
+    <% if (typeof success !== 'undefined' && success && success.length > 0) { %>
+      <div class="alert alert-success border-start border-success border-4">✅ <%= success %></div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error && error.length > 0) { %>
+      <div class="alert alert-danger border-start border-danger border-4">⚠️ <%= error %></div>
+    <% } %>
+
+    <!-- ── Ledger Hero ── -->
+    <div class="ledger">
+      <div>
+        <div class="who">Account Standing</div>
+        <div style="font-size:18px; font-weight:600;"><%= supplier.name %></div>
+        <div class="since">
+          Supplier since <%= new Date(supplier.createdAt).toLocaleDateString('en-PK', {year:'numeric', month:'long', day:'numeric'}) %>
+        </div>
+      </div>
+      <div class="text-end">
+        <% if (remaining > 0) { %>
+          <div class="balance-label">Hum Inko Owe Karte Hain</div>
+          <div class="balance-value owes">Rs. <%= remaining.toLocaleString() %></div>
+          <div class="balance-tag">🔴 Payment pending</div>
+        <% } else { %>
+          <div class="balance-label">Account Standing</div>
+          <div class="balance-value settled">Rs. 0</div>
+          <div class="balance-tag">✓ Settled in full</div>
+        <% } %>
+      </div>
+    </div>
+
+    <!-- ── Contact strip ── -->
+    <div class="info-strip">
+      <div class="cell">
+        <div class="lbl">Phone</div>
+        <div class="val mono"><%= supplier.phone || '—' %></div>
+      </div>
+      <div class="cell">
+        <div class="lbl">WhatsApp</div>
+        <div class="val mono"><%= supplier.whatsapp || '—' %></div>
+      </div>
+      <div class="cell">
+        <div class="lbl">Company</div>
+        <div class="val"><%= supplier.company || '—' %></div>
+      </div>
+      <div class="cell">
+        <div class="lbl">Address</div>
+        <div class="val"><%= supplier.address || '—' %></div>
+      </div>
+    </div>
+
+    <!-- ── Lifetime metrics ── -->
+    <div class="metrics">
+      <div class="metric">
+        <div class="lbl">Total Purchases</div>
+        <div class="val">Rs. <%= (supplier.totalPurchases || 0).toLocaleString() %></div>
+      </div>
+      <div class="metric">
+        <div class="lbl">Total Paid</div>
+        <div class="val" style="color:#166534">Rs. <%= (supplier.totalPaid || 0).toLocaleString() %></div>
+      </div>
+      <div class="metric">
+        <div class="lbl">Remaining</div>
+        <div class="val" style="color:#9b1c1c">Rs. <%= remaining.toLocaleString() %></div>
+      </div>
+      <div class="metric">
+        <div class="lbl">Payment Terms</div>
+        <div class="val text-capitalize"><%= supplier.paymentTerms || '—' %></div>
+      </div>
+    </div>
+
+    <!-- ── Add Purchase (naya saman liya) ── -->
+    <div class="pay-box d-flex align-items-center justify-content-between flex-wrap gap-2" style="background:#fff7ed; border-color:#fdba74;">
+      <div>
+        <div class="section-title" style="color:#c2410c;">📦 Add Purchase (Naya Saman Liya)</div>
+        <div class="text-muted" style="font-size:12px">
+          Medicines select karo — inventory batch-wise khud restock ho jayegi aur ledger update ho jayega.
+        </div>
+      </div>
+      <a href="/suppliers/<%= supplier._id %>/purchase/new" class="btn btn-warning fw-semibold text-nowrap">➕ Add Purchase</a>
+    </div>
+
+    <!-- ── Pay Supplier ── -->
+    <% if (remaining > 0) { %>
+    <div class="pay-box">
+      <div class="section-title">💳 Pay Supplier</div>
+      <div class="text-muted mb-2" style="font-size:12px">
+        Remaining: <strong class="text-primary">Rs. <%= remaining.toLocaleString() %></strong>
+      </div>
+
+      <div class="row g-2">
+        <div class="col-md-3">
+          <label class="form-label-sm">Payment Method</label>
+          <select id="paySupplierMethod" class="form-select form-select-sm" onchange="togglePaySupplierBank()">
+            <option value="cash">💵 Cash</option>
+            <option value="bank">🏦 Bank Transfer</option>
+          </select>
+        </div>
+        <div class="col-md-3" id="paySupplierBankRow" style="display:none">
+          <label class="form-label-sm">Bank Account</label>
+          <select id="paySupplierBankAccount" class="form-select form-select-sm">
+            <option value="">— Select Bank —</option>
+            <% if (typeof bankAccounts !== 'undefined') { %>
+              <% bankAccounts.forEach(acc => { %>
+                <option value="<%= acc._id %>"><%= acc.bankName %> — <%= acc.accountTitle %></option>
+              <% }) %>
+            <% } %>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Amount (Rs.)</label>
+          <input type="number" id="paySupplierAmount" class="form-control form-control-sm"
+            placeholder="Enter amount" min="1" max="<%= remaining %>" />
+        </div>
+        <div class="col-md-3">
+          <label class="form-label-sm">Note (optional)</label>
+          <input type="text" id="paySupplierNote" class="form-control form-control-sm" placeholder="e.g. Cheque #123" />
+        </div>
+      </div>
+
+      <div class="mt-2">
+        <button class="btn btn-sm btn-primary fw-semibold" id="paySupplierBtn" onclick="paySupplier('<%= supplier._id %>')">Save Payment</button>
+      </div>
+      <div class="alert-msg mt-2 p-2 rounded" id="paySupplierMsg"></div>
+    </div>
+    <% } %>
+
+    <!-- ── Purchase History ── -->
+    <div class="section-title">
+      <span>Purchase History</span>
+      <span class="mono" style="font-weight:400; letter-spacing:0;"><%= purchases.length %> purchase<%= purchases.length !== 1 ? 's' : '' %></span>
+    </div>
+
+    <div class="ledger-table mb-4">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Invoice #</th>
+            <th>Note / Items</th>
+            <th class="num">Amount</th>
+            <th class="num">Paid</th>
+            <th class="num">Remaining</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!purchases || purchases.length === 0) { %>
+            <tr><td colspan="7" class="empty-row">Abhi koi purchase record nahi hai.</td></tr>
+          <% } else { %>
+            <% purchases.forEach(p => { %>
+            <% const pRemaining = Math.max(0, (p.amount || 0) - (p.amountPaid || 0)); %>
+            <tr class="purchase-row" style="cursor:pointer;" onclick="window.location.href='/suppliers/purchase/<%= p._id %>/invoice'">
+              <td style="color:#777;">
+                <%= new Date(p.createdAt).toLocaleDateString('en-PK', {day:'numeric', month:'short', year:'numeric'}) %>
+              </td>
+              <td class="mono text-primary fw-semibold"><%= p.invoiceNumber || '—' %></td>
+              <td class="text-muted">
+                <% if (p.items && p.items.length > 0) { %>
+                  <%= p.items.length %> item<%= p.items.length !== 1 ? 's' : '' %><%= p.note ? (' — ' + p.note) : '' %>
+                <% } else { %>
+                  <%= p.note || '—' %>
+                <% } %>
+              </td>
+              <td class="num amt">Rs. <%= (p.amount || 0).toLocaleString() %></td>
+              <td class="num" style="color:#166534;">Rs. <%= (p.amountPaid || 0).toLocaleString() %></td>
+              <td class="num" style="color:<%= pRemaining > 0 ? '#9b1c1c' : '#166534' %>;">Rs. <%= pRemaining.toLocaleString() %></td>
+              <td>
+                <% if (p.status === 'completed') { %>
+                  <span class="pm-badge" style="background:#dcfce7; color:#166534;">✓ Paid</span>
+                <% } else { %>
+                  <span class="pm-badge" style="background:#fee2e2; color:#9b1c1c;">Pending</span>
+                <% } %>
+              </td>
+            </tr>
+            <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ── Payment History ── -->
+    <div class="section-title">
+      <span>Payment History</span>
+      <span class="mono" style="font-weight:400; letter-spacing:0;"><%= payments.length %> payment<%= payments.length !== 1 ? 's' : '' %></span>
+    </div>
+
+    <div class="ledger-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Method</th>
+            <th>Account</th>
+            <th>Note</th>
+            <th class="num">Amount</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% if (!payments || payments.length === 0) { %>
+            <tr><td colspan="5" class="empty-row">Abhi koi payment record nahi hai.</td></tr>
+          <% } else { %>
+            <% payments.forEach(p => { %>
+            <tr>
+              <td style="color:#777;">
+                <%= new Date(p.createdAt).toLocaleDateString('en-PK', {day:'numeric', month:'short', year:'numeric'}) %>
+                <span class="text-muted" style="font-size:11px;">
+                  <%= new Date(p.createdAt).toLocaleTimeString('en-PK', {hour:'2-digit', minute:'2-digit'}) %>
+                </span>
+              </td>
+              <td>
+                <span class="pm-badge"><%= p.method === 'cash' ? '💵 Cash' : '🏦 Bank' %></span>
+              </td>
+              <td class="text-muted">
+                <%= p.bankAccount ? (p.bankAccount.bankName + ' — ' + p.bankAccount.accountTitle) : '—' %>
+              </td>
+              <td class="text-muted"><%= p.note || '—' %></td>
+              <td class="num amt" style="color:#166534;">Rs. <%= (p.amount || 0).toLocaleString() %></td>
+            </tr>
+            <% }) %>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  function togglePaySupplierBank() {
+    const method = document.getElementById('paySupplierMethod').value;
+    document.getElementById('paySupplierBankRow').style.display = method === 'bank' ? 'block' : 'none';
+  }
+
+  function showAlert(elId, msg, type) {
+    const el = document.getElementById(elId);
+    el.textContent = msg;
+    el.className = 'alert-msg mt-2 p-2 rounded show ' +
+      (type === 'success' ? 'bg-success-subtle text-success' : 'bg-danger-subtle text-danger');
+  }
+
+  function setBtn(id, disabled, label) {
+    const btn = document.getElementById(id);
+    btn.disabled = disabled;
+    btn.textContent = label;
+  }
+
+  async function paySupplier(supplierId) {
+    const amountInput = document.getElementById('paySupplierAmount');
+    const amount  = parseFloat(amountInput.value);
+    const method  = document.getElementById('paySupplierMethod').value;
+    const bankAccountId = document.getElementById('paySupplierBankAccount')?.value || '';
+    const note    = document.getElementById('paySupplierNote').value;
+
+    if (!amount || amount <= 0) { showAlert('paySupplierMsg', 'Valid amount enter karo', 'error'); return; }
+    if (method === 'bank' && !bankAccountId) { showAlert('paySupplierMsg', 'Bank account select karo', 'error'); return; }
+
+    setBtn('paySupplierBtn', true, 'Saving...');
+    try {
+      const res = await fetch(`/suppliers/${supplierId}/pay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, method, bankAccountId, note })
+      });
+      const data = await res.json();
+      if (data.success) {
+        showAlert('paySupplierMsg', `✓ Rs. ${amount.toLocaleString()} payment (${method}) save ho gayi`, 'success');
+        setTimeout(() => location.reload(), 1500);
+      } else {
+        showAlert('paySupplierMsg', data.error || 'Error hua', 'error');
+        setBtn('paySupplierBtn', false, 'Save Payment');
+      }
+    } catch (err) {
+      showAlert('paySupplierMsg', 'Server error: ' + err.message, 'error');
+      setBtn('paySupplierBtn', false, 'Save Payment');
+    }
+  }
+</script>
+
+</body>
+</html>

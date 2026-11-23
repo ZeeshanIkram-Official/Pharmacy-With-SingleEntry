@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales History</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: #f4f5f7;
+      font-size: 14px;
+    }
+
+    .main {
+      margin-left: 220px;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .invoice-num {
+      color: #d68910;
+      font-weight: 700;
+    }
+
+    @media(max-width:768px) {
+      .main {
+        margin-left: 60px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <%- include('../partials/sidebar') %>
+
+    <main class="main">
+
+      <div class="topbar bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between shadow-sm">
+        <h2 class="fs-6 fw-semibold mb-0">🧾 Sales History</h2>
+        <a href="/sales/new" class="btn btn-primary btn-sm">+ New Sale</a>
+      </div>
+
+      <div class="p-4">
+
+        <%# Filter Form %>
+          <form class="d-flex gap-2 mb-3 align-items-center flex-wrap" method="GET">
+            <input type="text" name="search" class="form-control" style="max-width:200px;"
+              placeholder="Search invoice..." value="<%= search || '' %>">
+            <input type="date" name="dateFrom" class="form-control" style="width:160px;" value="<%= dateFrom || '' %>"
+              title="From date">
+            <span class="text-muted">to</span>
+            <input type="date" name="dateTo" class="form-control" style="width:160px;" value="<%= dateTo || '' %>"
+              title="To date">
+            <select name="salesman" class="form-select" style="max-width:180px;">
+              <option value="">All Salesmen</option>
+              <% if (typeof salesmen !=='undefined' ) { salesmen.forEach(sm=> { %>
+                <option value="<%= sm._id %>" <%=(typeof selectedSalesman !=='undefined' &&
+                  selectedSalesman===sm._id.toString()) ? 'selected' : '' %>>
+                  <%= sm.name %>
+                </option>
+                <% }) } %>
+            </select>
+            <button type="submit" class="btn btn-primary">Filter</button>
+            <a href="/sales" class="btn btn-outline-secondary">Clear</a>
+          </form>
+
+          <%# Table %>
+            <div class="card shadow-sm">
+              <div class="table-responsive">
+                <table class="table table-hover table-sm mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th class="text-uppercase small text-muted fw-semibold px-3">Invoice</th>
+                      <th class="text-uppercase small text-muted fw-semibold">Date</th>
+                      <th class="text-uppercase small text-muted fw-semibold">Customer</th>
+                      <th class="text-uppercase small text-muted fw-semibold">Salesman</th>
+                      <th class="text-uppercase small text-muted fw-semibold">Items</th>
+                      <th class="text-uppercase small text-muted fw-semibold">Payment</th>
+                      <th class="text-uppercase small text-muted fw-semibold">Total</th>
+                      <th class="text-uppercase small text-muted fw-semibold">Paid</th>
+                      <th class="text-uppercase small text-muted fw-semibold">Status</th>
+                      <th class="text-uppercase small text-muted fw-semibold">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% if (!sales || sales.length===0) { %>
+                      <tr>
+                        <td colspan="10" class="text-center text-muted py-5">No sales found</td>
+                      </tr>
+                      <% } %>
+                        <% sales.forEach(function(sale) { const totalAmount=sale.totalAmount || 0; const
+                          netPaid=sale.amountPaid || 0; const remaining=totalAmount - netPaid; let status='paid' ; let
+                          badgeClass='bg-success' ; if (totalAmount===0) { status='refunded' ; badgeClass='bg-danger' ;
+                          } else if (remaining <=0) { status='paid' ; badgeClass='bg-success' ; } else if (netPaid> 0) {
+                          status='partial'; badgeClass='bg-warning text-dark'; }
+                          else { status='unpaid'; badgeClass='bg-danger'; }
+                          %>
+                          <tr>
+                            <td class="invoice-num px-3">
+                              <%= sale.invoiceNumber %>
+                            </td>
+                            <td>
+                              <%= moment(sale.createdAt).format('DD/MM/YY') %>
+                                <div class="text-muted small">
+                                  <%= moment(sale.createdAt).format('hh:mm A') %>
+                                </div>
+                            </td>
+                            <td>
+                              <%= sale.customerName %>
+                            </td>
+                            <td class="small text-muted">
+                              <%= sale.salesmanName || '—' %>
+                            </td>
+                            <td class="text-muted small">
+                              <%= sale.items.length %> items
+                            </td>
+                            <td><span class="badge bg-info-subtle text-info border border-info-subtle">
+                                <%= sale.paymentMethod %>
+                              </span></td>
+                            <td class="fw-bold">Rs. <%= totalAmount.toLocaleString() %>
+                            </td>
+                            <td class="text-success fw-semibold">Rs. <%= netPaid.toLocaleString() %>
+                            </td>
+                            <td><span class="badge <%= badgeClass %>">
+                                <%= status %>
+                              </span></td>
+                            <td>
+                              <a href="/sales/<%= sale._id %>/invoice" class="btn btn-outline-secondary btn-sm"
+                                target="_blank">
+                                🖨️ Invoice
+                              </a>
+                            </td>
+                          </tr>
+                          <% }) %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+      </div>
+    </main>
+
+</body>
+
+</html>

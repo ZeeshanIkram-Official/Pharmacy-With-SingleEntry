@@ -1,0 +1,51 @@
+{
+  "name": "PharmacyPOS-Distribution",
+  "version": "1.0.0",
+  "main": "index.js",
+  "bin": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "build:exe": "pkg . --targets node18-win-x64 --output dist-exe/PharmacyPOS.exe"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "Pharmacy POS",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "bootstrap": "^5.3.8",
+    "connect-flash": "^0.1.1",
+    "ejs": "^5.0.1",
+    "epress": "^0.0.1-security",
+    "exceljs": "^4.4.0",
+    "express": "^5.2.1",
+    "express-session": "^1.19.0",
+    "jsonwebtoken": "^9.0.2",
+    "method-override": "^3.0.0",
+    "moment": "^2.30.1",
+    "mongoose": "^9.3.3",
+    "multer": "^2.1.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14",
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "scripts": [
+      "routes/**/*.js",
+      "routes/api/**/*.js",
+      "models/**/*.js",
+      "middleware/**/*.js",
+      "utils/**/*.js",
+      "license.config.js"
+    ],
+    "assets": [
+      "views/**/*",
+      "public/**/*"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ],
+    "outputPath": "dist-exe"
+  }
+}

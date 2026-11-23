@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customers</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f4f5f7; font-size: 14px; }
+    .main { margin-left: 220px; }
+    .topbar { position: sticky; top: 0; z-index: 50; }
+    .customer-name { color: #d68910; font-weight: 700; text-decoration: none; }
+    .customer-name:hover { opacity: 0.8; }
+    @media(max-width:768px){ .main{ margin-left:60px; } }
+  </style>
+</head>
+<body>
+
+<%- include('../partials/sidebar') %>
+
+<main class="main">
+
+  <div class="topbar bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between shadow-sm">
+    <h2 class="fs-6 fw-semibold mb-0">👥 Customers</h2>
+    <a href="/customers/add" class="btn btn-primary btn-sm">+ Add Customer</a>
+  </div>
+
+  <div class="p-4">
+
+    <%# Search %>
+    <div class="input-group mb-3">
+      <span class="input-group-text bg-white">🔍</span>
+      <input type="text" id="customerSearch"
+             class="form-control border-start-0"
+             placeholder="Search customer by name, phone..."
+             value="<%= search || '' %>"
+             autocomplete="off">
+    </div>
+
+    <%# Flash Messages %>
+    <% if (typeof success !== 'undefined' && success.length > 0) { %>
+      <div class="alert alert-success border-start border-success border-4">✅ <%= success %></div>
+    <% } %>
+    <% if (typeof error !== 'undefined' && error.length > 0) { %>
+      <div class="alert alert-danger border-start border-danger border-4">⚠️ <%= error %></div>
+    <% } %>
+
+    <%# Table %>
+    <div class="card shadow-sm">
+      <div class="card-header bg-light d-flex align-items-center justify-content-between py-3">
+        <h6 class="mb-0 fw-semibold">All Customers</h6>
+        <span id="customerCount" class="badge bg-light text-secondary border border-secondary-subtle px-3">
+          <%= customers ? customers.length : 0 %> total
+        </span>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-hover table-sm mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="text-uppercase small text-muted fw-semibold px-3">#</th>
+              <th class="text-uppercase small text-muted fw-semibold">Name</th>
+              <th class="text-uppercase small text-muted fw-semibold">Phone</th>
+              <th class="text-uppercase small text-muted fw-semibold">WhatsApp</th>
+              <th class="text-uppercase small text-muted fw-semibold">Total Purchases</th>
+              <th class="text-uppercase small text-muted fw-semibold">Total Spent</th>
+              <th class="text-uppercase small text-muted fw-semibold">🔴 Credit</th>
+              <th class="text-uppercase small text-muted fw-semibold">💰 Advance</th>
+              <th class="text-uppercase small text-muted fw-semibold">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="customerTableBody">
+            <% if (!customers || customers.length === 0) { %>
+              <tr>
+                <td colspan="9" class="text-center text-muted py-5">
+                  No customers found. <a href="/customers/add" class="text-warning">Add one!</a>
+                </td>
+              </tr>
+            <% } else { %>
+              <% customers.forEach((c, i) => { %>
+              <tr>
+                <td class="text-muted small px-3"><%= i + 1 %></td>
+                <td>
+                  <a href="/customers/<%= c._id %>" class="customer-name"><%= c.name %></a>
+                </td>
+                <td class="text-muted"><%= c.phone || '—' %></td>
+                <td class="text-muted"><%= c.whatsapp || '—' %></td>
+                <td>
+                  <span class="badge bg-info-subtle text-info border border-info-subtle"><%= c.totalPurchases %> orders</span>
+                </td>
+                <td>
+                  <span class="badge bg-success-subtle text-success border border-success-subtle">
+                    Rs. <%= (c.totalSpent || 0).toLocaleString() %>
+                  </span>
+                </td>
+                <td>
+                  <% if ((c.creditOwed || 0) > 0) { %>
+                    <span class="badge bg-danger-subtle text-danger border border-danger-subtle">
+                      Rs. <%= c.creditOwed.toLocaleString() %>
+                    </span>
+                  <% } else { %>
+                    <span class="text-muted small">—</span>
+                  <% } %>
+                </td>
+                <td>
+                  <% if ((c.walletBalance || 0) > 0) { %>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle">
+                      Rs. <%= c.walletBalance.toLocaleString() %>
+                    </span>
+                  <% } else { %>
+                    <span class="text-muted small">—</span>
+                  <% } %>
+                </td>
+                <td>
+                  <div class="d-flex gap-1">
+                    <a href="/customers/<%= c._id %>" class="btn btn-outline-secondary btn-sm">📒 Ledger</a>
+                    <a href="/customers/<%= c._id %>/edit" class="btn btn-outline-secondary btn-sm">✏️ Edit</a>
+                    <form action="/customers/<%= c._id %>?_method=DELETE" method="POST"
+                          onsubmit="return confirm('Delete karna chahte ho?')">
+                      <button type="submit" class="btn btn-outline-danger btn-sm">🗑</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              <% }) %>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+  let searchTimeout;
+  document.getElementById('customerSearch').addEventListener('input', function () {
+    clearTimeout(searchTimeout);
+    const q = this.value.trim();
+    if (q.length < 1) { fetchCustomers(''); return; }
+    searchTimeout = setTimeout(() => fetchCustomers(q), 300);
+  });
+
+  async function fetchCustomers(q) {
+    try {
+      const res = await fetch(`/customers/api/search?q=${encodeURIComponent(q)}`);
+      const customers = await res.json();
+      const tbody = document.getElementById('customerTableBody');
+      const countBadge = document.getElementById('customerCount');
+      countBadge.textContent = `${customers.length} total`;
+      if (customers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted py-5">No customers found. <a href="/customers/add" class="text-warning">Add one!</a></td></tr>`;
+        return;
+      }
+      tbody.innerHTML = customers.map((c, i) => `
+        <tr>
+          <td class="text-muted small px-3">${i + 1}</td>
+          <td><a href="/customers/${c._id}" class="customer-name">${c.name}</a></td>
+          <td class="text-muted">${c.phone || '—'}</td>
+          <td class="text-muted">${c.whatsapp || '—'}</td>
+          <td><span class="badge bg-info-subtle text-info border border-info-subtle">${c.totalPurchases || 0} orders</span></td>
+          <td><span class="badge bg-success-subtle text-success border border-success-subtle">Rs. ${(c.totalSpent || 0).toLocaleString()}</span></td>
+          <td>${(c.creditOwed || 0) > 0 ? `<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Rs. ${c.creditOwed.toLocaleString()}</span>` : '<span class="text-muted small">—</span>'}</td>
+          <td>${(c.walletBalance || 0) > 0 ? `<span class="badge bg-primary-subtle text-primary border border-primary-subtle">Rs. ${c.walletBalance.toLocaleString()}</span>` : '<span class="text-muted small">—</span>'}</td>
+          <td>
+            <div class="d-flex gap-1">
+              <a href="/customers/${c._id}" class="btn btn-outline-secondary btn-sm">👁️ View</a>
+              <a href="/customers/${c._id}/edit" class="btn btn-outline-secondary btn-sm">✏️ Edit</a>
+              <form action="/customers/${c._id}?_method=DELETE" method="POST" onsubmit="return confirm('Delete karna chahte ho?')">
+                <button type="submit" class="btn btn-outline-danger btn-sm">🗑</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      `).join('');
+    } catch (err) { console.error('Search error:', err); }
+  }
+</script>
+
+</body>
+</html>

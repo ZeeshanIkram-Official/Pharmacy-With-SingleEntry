@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Journal Voucher</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f4f5f7; font-size: 14px; }
+    .main { margin-left: 220px; }
+    .topbar { position: sticky; top: 0; z-index: 50; }
+    @media(max-width:768px){ .main{ margin-left:60px; } }
+  </style>
+</head>
+<body>
+
+<%- include('../partials/sidebar') %>
+
+<main class="main">
+
+  <div class="topbar bg-white border-bottom px-4 py-3 d-flex align-items-center justify-content-between shadow-sm">
+    <h2 class="fs-6 fw-semibold mb-0">➕ Journal Voucher — Manual Entry</h2>
+    <a href="/reports/trial-balance" class="btn btn-outline-secondary btn-sm">← Trial Balance</a>
+  </div>
+
+  <div class="p-4">
+
+    <div class="alert alert-secondary small mb-4">
+      💡 Yeh manual double-entry hai — kisi bhi cheez ko theek karne ya <strong>opening cash-in-hand</strong> set
+      karne ke liye use karo. Total Debit aur Total Credit barabar hone chahiye, tab hi save hoga.
+    </div>
+
+    <% if (typeof error !== 'undefined' && error) { %>
+      <div class="alert alert-danger"><%= error %></div>
+    <% } %>
+
+    <form method="POST" action="/reports/journal-voucher" class="card shadow-sm">
+      <div class="card-body">
+
+        <div class="row g-2 mb-3">
+          <div class="col-md-3">
+            <label class="form-label small fw-semibold text-muted">Date</label>
+            <input type="date" name="date" class="form-control" value="<%= new Date().toISOString().slice(0,10) %>">
+          </div>
+          <div class="col-md-9">
+            <label class="form-label small fw-semibold text-muted">Narration</label>
+            <input type="text" name="narration" class="form-control" placeholder="e.g. Opening cash-in-hand set kiya">
+          </div>
+        </div>
+
+        <table class="table table-sm align-middle" id="jvTable">
+          <thead class="table-light">
+            <tr>
+              <th class="text-uppercase small text-muted">Account</th>
+              <th class="text-uppercase small text-muted text-end" style="width:160px;">Debit (Rs)</th>
+              <th class="text-uppercase small text-muted text-end" style="width:160px;">Credit (Rs)</th>
+              <th style="width:40px;"></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% for (let i = 0; i < 2; i++) { %>
+            <tr>
+              <td>
+                <select name="accountId" class="form-select form-select-sm">
+                  <option value="">— Account select karo —</option>
+                  <% accountsList.forEach(acc => { %>
+                    <option value="<%= acc._id %>"><%= acc.code %> — <%= acc.name %></option>
+                  <% }) %>
+                </select>
+              </td>
+              <td><input type="number" step="0.01" name="debit" class="form-control form-control-sm text-end"></td>
+              <td><input type="number" step="0.01" name="credit" class="form-control form-control-sm text-end"></td>
+              <td class="text-center">
+                <button type="button" class="btn btn-sm btn-outline-danger removeRow">✕</button>
+              </td>
+            </tr>
+            <% } %>
+          </tbody>
+        </table>
+
+        <button type="button" id="addRowBtn" class="btn btn-outline-secondary btn-sm mb-3">➕ Add Line</button>
+
+        <div class="d-flex justify-content-end">
+          <button type="submit" class="btn btn-success">💾 Journal Voucher Save Karo</button>
+        </div>
+
+      </div>
+    </form>
+
+  </div>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  document.getElementById('addRowBtn').addEventListener('click', function () {
+    const tbody = document.querySelector('#jvTable tbody');
+    const newRow = tbody.rows[0].cloneNode(true);
+    newRow.querySelectorAll('input').forEach(i => i.value = '');
+    newRow.querySelector('select').selectedIndex = 0;
+    tbody.appendChild(newRow);
+  });
+
+  document.querySelector('#jvTable tbody').addEventListener('click', function (e) {
+    if (e.target.classList.contains('removeRow')) {
+      const tbody = document.querySelector('#jvTable tbody');
+      if (tbody.rows.length > 2) e.target.closest('tr').remove();
+    }
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= salesman.name %> — Sales</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background: #f4f5f7; font-size: 14px; }
+    .main { margin-left: 220px; }
+    .topbar { position: sticky; top: 0; z-index: 50; }
+    .invoice-num { color: #d68910; font-weight: 700; }
+    @media(max-width:768px){ .main{ margin-left:60px; } }
+  </style>
+</head>
+<body>
+
+  <%- include('../partials/sidebar') %>
+
+  <main class="main">
+
+    <!-- Top Bar -->
+    <div class="topbar bg-white border-bottom px-4 py-3 d-flex align-items-center gap-3 shadow-sm">
+      <a href="/salesmen" class="btn btn-outline-secondary btn-sm">← Back</a>
+      <div>
+        <h2 class="fs-6 fw-semibold mb-0">🧑‍💼 <%= salesman.name %></h2>
+        <% if (salesman.phone) { %>
+          <small class="text-muted">📞 <%= salesman.phone %></small>
+        <% } %>
+      </div>
+    </div>
+
+    <div class="p-4">
+
+       <%# Date Range Filter %>
+  <form class="d-flex gap-2 mb-3 align-items-center flex-wrap" method="GET">
+    <input type="date" name="dateFrom" class="form-control" style="width:160px;"
+           value="<%= dateFrom || '' %>" title="From date">
+    <span class="text-muted">to</span>
+    <input type="date" name="dateTo" class="form-control" style="width:160px;"
+           value="<%= dateTo || '' %>" title="To date">
+    <button type="submit" class="btn btn-primary">Filter</button>
+    <a href="/salesmen/<%= salesman._id %>/sales" class="btn btn-outline-secondary">Clear</a>
+  </form>
+
+      <!-- Summary Cards -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-4">
+          <div class="card shadow-sm text-center py-3">
+            <div class="fs-4 fw-bold text-primary"><%= sales.length %></div>
+            <div class="text-muted small">Total Sales</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card shadow-sm text-center py-3">
+            <div class="fs-4 fw-bold text-success">Rs. <%= totalAmount.toLocaleString() %></div>
+            <div class="text-muted small">Total Amount</div>
+          </div>
+        </div>
+        <div class="col-md-4">
+          <div class="card shadow-sm text-center py-3">
+            <div class="fs-4 fw-bold text-warning">Rs. <%= (totalAmount - totalPaid).toLocaleString() %></div>
+            <div class="text-muted small">Pending Recovery</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sales Table -->
+      <div class="card shadow-sm">
+        <div class="card-header bg-white py-2 fw-semibold">
+          Sales History — <%= salesman.name %>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-hover table-sm mb-0">
+            <thead class="table-light">
+              <tr>
+                <th class="text-uppercase small text-muted fw-semibold px-3">Invoice</th>
+                <th class="text-uppercase small text-muted fw-semibold">Date</th>
+                <th class="text-uppercase small text-muted fw-semibold">Customer</th>
+                <th class="text-uppercase small text-muted fw-semibold">Payment</th>
+                <th class="text-uppercase small text-muted fw-semibold text-end">Amount</th>
+                <th class="text-uppercase small text-muted fw-semibold text-end">Paid</th>
+                <th class="text-uppercase small text-muted fw-semibold text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% if (sales.length === 0) { %>
+                <tr>
+                  <td colspan="7" class="text-center text-muted py-5">
+                    Is salesman ki abhi koi sale nahi hai.
+                  </td>
+                </tr>
+              <% } %>
+              <% sales.forEach(sale => { %>
+                <tr>
+                  <td class="px-3">
+                    <a href="/sales/<%= sale._id %>/invoice" target="_blank"
+                       class="invoice-num text-decoration-none">
+                      <%= sale.invoiceNumber %>
+                    </a>
+                  </td>
+                  <td class="text-muted small">
+                    <%= new Date(sale.createdAt).toLocaleDateString('en-PK', { day:'2-digit', month:'short', year:'numeric' }) %>
+                    <div class="text-muted" style="font-size:0.7rem;">
+                      <%= new Date(sale.createdAt).toLocaleTimeString('en-PK', { hour:'2-digit', minute:'2-digit' }) %>
+                    </div>
+                  </td>
+                  <td><%= sale.customerName %></td>
+                  <td>
+                    <span class="badge
+                      <%= sale.paymentMethod === 'cash'   ? 'bg-success-subtle text-success border border-success-subtle'   :
+                          sale.paymentMethod === 'credit' ? 'bg-warning-subtle text-warning border border-warning-subtle'   :
+                          sale.paymentMethod === 'bank'   ? 'bg-info-subtle text-info border border-info-subtle'            :
+                          'bg-secondary-subtle text-secondary border border-secondary-subtle' %>">
+                      <%= sale.paymentMethod %>
+                    </span>
+                  </td>
+                  <td class="text-end fw-semibold">Rs. <%= sale.totalAmount.toLocaleString() %></td>
+                  <td class="text-end">Rs. <%= sale.amountPaid.toLocaleString() %></td>
+                  <td class="text-center">
+                    <span class="badge
+                      <%= sale.status === 'completed' ? 'bg-success-subtle text-success border border-success-subtle' :
+                          sale.status === 'pending'   ? 'bg-warning-subtle text-warning border border-warning-subtle' :
+                          'bg-danger-subtle text-danger border border-danger-subtle' %>">
+                      <%= sale.status %>
+                    </span>
+                  </td>
+                </tr>
+              <% }) %>
+            </tbody>
+            <% if (sales.length > 0) { %>
+              <tfoot class="table-light">
+                <tr>
+                  <td colspan="4" class="px-3 fw-semibold">Total</td>
+                  <td class="text-end fw-bold text-success">Rs. <%= totalAmount.toLocaleString() %></td>
+                  <td class="text-end fw-bold">Rs. <%= totalPaid.toLocaleString() %></td>
+                  <td></td>
+                </tr>
+              </tfoot>
+            <% } %>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<%# sidebar.ejs — Role-based screen visibility with allowedScreens %>
+
+  <% function canSee(screenKey) { if (typeof allowedScreens==='undefined' ) return false; if (allowedScreens==='__all__'
+    ) return true; if (currentRole==='admin' ) return true; return Array.isArray(allowedScreens) &&
+    allowedScreens.includes(screenKey); } %>
+
+    <style>
+      .sidebar {
+        width: 220px;
+        min-height: 100vh;
+        background: #1c2a3a;
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 100;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sidebar .nav-link {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.82rem;
+        font-weight: 500;
+        border-radius: 4px;
+        transition: all 0.15s;
+      }
+
+      .sidebar .nav-link:hover {
+        background: rgba(255, 255, 255, 0.07);
+        color: rgba(255, 255, 255, 0.9);
+      }
+
+      .sidebar .nav-link.active {
+        background: #1a6fbc;
+        color: #fff;
+      }
+
+      .sidebar .nav-link .icon {
+        width: 18px;
+        text-align: center;
+        font-size: 1rem;
+        opacity: 0.85;
+      }
+
+      .main {
+        margin-left: 220px;
+      }
+
+      @media (max-width: 768px) {
+        .sidebar {
+          width: 60px;
+        }
+
+        .sidebar .logo-text,
+        .sidebar .nav-label,
+        .sidebar .sidebar-footer-text {
+          display: none;
+        }
+
+        .sidebar .nav-link {
+          justify-content: center;
+          padding: 10px 0;
+        }
+
+        .main {
+          margin-left: 60px;
+        }
+      }
+    </style>
+
+    <aside class="sidebar d-flex flex-column">
+
+      <%# Logo %>
+        <div class="p-3 border-bottom border-secondary">
+          <h1 class="fs-6 fw-bold text-white mb-0 logo-text">Pharmacy POS</h1>
+        </div>
+
+        <%# Navigation %>
+          <nav class="nav flex-column p-2 flex-fill">
+
+            <% if (canSee('dashboard')) { %>
+              <a href="/dashboard"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'dashboard' ? 'active' : '' %>">
+                <span class="icon">📊</span>
+                <span class="nav-label">Dashboard</span>
+              </a>
+            <% } %>
+
+            <% if (canSee('new-sale')) { %>
+              <a href="/sales/new"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'new-sale' ? 'active' : '' %>">
+                <span class="icon">🛒</span>
+                <span class="nav-label">New Sale</span>
+              </a>
+            <% } %>
+
+            <% if (canSee('sales')) { %>
+              <a href="/sales"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'sales' ? 'active' : '' %>">
+                <span class="icon">🧾</span>
+                <span class="nav-label">Sales History</span>
+              </a>
+            <% } %>
+
+            <% if (canSee('products') || canSee('inventory')) { %>
+              <a href="/products"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'products' ? 'active' : '' %>">
+                <span class="icon">💊</span>
+                <span class="nav-label">Medicines</span>
+              </a>
+            <% } %>
+
+            <% if (canSee('customers')) { %>
+              <a href="/customers"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'customers' ? 'active' : '' %>">
+                <span class="icon">👥</span>
+                <span class="nav-label">Customers</span>
+              </a>
+            <% } %>
+
+            <% if (canSee('suppliers')) { %>
+              <a href="/suppliers"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'suppliers' ? 'active' : '' %>">
+                <span class="icon">🏭</span>
+                <span class="nav-label">Suppliers</span>
+              </a>
+            <% } %>
+
+            <% if (canSee('reports')) { %>
+              <a href="/reports/profit"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'reports' ? 'active' : '' %>">
+                <span class="icon">📈</span>
+                <span class="nav-label">Profit Report</span>
+              </a>
+              <a href="/reports/trial-balance"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'reports' ? 'active' : '' %>">
+                <span class="icon">📒</span>
+                <span class="nav-label">Trial Balance</span>
+              </a>
+            <% } %>
+
+            <% if (canSee('credit-sales')) { %>
+              <a href="/sales/credit"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'credit-sales' ? 'active' : '' %>">
+                <span class="icon">💳</span>
+                <span class="nav-label">Credit Sales</span>
+              </a>
+            <% } %>
+
+            <% if (canSee('sale-returns')) { %>
+              <a href="/sale-returns"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'sale-returns' ? 'active' : '' %>">
+                <span class="icon">↩️</span>
+                <span class="nav-label">Sale Returns</span>
+              </a>
+            <% } %>
+
+            <%# Expenses — ab canSee() se control hoga %>
+            <% if (canSee('expenses')) { %>
+              <a href="/expenses"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'expenses' ? 'active' : '' %>">
+                <span class="icon">💸</span>
+                <span class="nav-label">Expenses</span>
+              </a>
+            <% } %>
+
+            
+            <%# Bank Accounts — sirf admin %>
+            <% if (currentRole === 'admin') { %>
+              <a href="/bank-accounts"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'bank-accounts' ? 'active' : '' %>">
+                <span class="icon">🏦</span>
+                <span class="nav-label">Bank Accounts</span>
+              </a>
+            <% } %>
+
+            <%# Salesmen — sirf admin %>
+            <% if (currentRole === 'admin') { %>
+              <a href="/salesmen"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'salesmen' ? 'active' : '' %>">
+                <span class="icon">🧑‍💼</span>
+                <span class="nav-label">Salesmen</span>
+              </a>
+            <% } %>
+
+            <%# Backup & Restore — sirf admin %>
+            <% if (currentRole === 'admin') { %>
+              <a href="/backup"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'backup' ? 'active' : '' %>">
+                <span class="icon">💾</span>
+                <span class="nav-label">Backup & Restore</span>
+              </a>
+            <% } %>
+
+            <%# Users — sirf admin %>
+            <!-- <% if (canSee('users')) { %>
+              <a href="/users"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'users' ? 'active' : '' %>">
+                <span class="icon">🔑</span>
+                <span class="nav-label">Users</span>
+              </a>
+            <% } %>
+
+            <%# Permissions — sirf admin %>
+            <% if (currentRole === 'admin') { %>
+              <a href="/permissions"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'permissions' ? 'active' : '' %>">
+                <span class="icon">🛡️</span>
+                <span class="nav-label">Permissions</span>
+              </a>
+            <% } %>
+
+            <%# My Profile — sirf non-admin %>
+            <% if (currentRole !== 'admin' && typeof currentUserId !== 'undefined' && currentUserId) { %>
+              <a href="/users/<%= currentUserId %>/edit"
+                class="nav-link d-flex align-items-center gap-2 mb-1 <%= currentPage === 'profile' ? 'active' : '' %>">
+                <span class="icon">👤</span>
+                <span class="nav-label">My Profile</span>
+              </a>
+            <% } %> -->
+
+          </nav>
+
+          <%# Footer — user info + logout %>
+            <div class="p-3 border-top border-secondary mt-auto">
+              <div class="mb-2 px-1 sidebar-footer-text" style="font-size:0.72rem; color:rgba(255,255,255,0.45);">
+                👤 <strong style="color:rgba(255,255,255,0.7);">
+                  <%= typeof currentUser !== 'undefined' && currentUser ? currentUser : 'User' %>
+                </strong>
+                <% if (typeof currentRole !== 'undefined' && currentRole) { %>
+                  <span class="badge ms-1" style="font-size:0.58rem; background:#1a6fbc;">
+                    <%= currentRole.charAt(0).toUpperCase() + currentRole.slice(1) %>
+                  </span>
+                <% } %>
+              </div>
+              <a href="/logout" class="nav-link d-flex align-items-center gap-2 rounded px-2 py-1"
+                style="color:rgba(255,120,120,0.85); font-size:0.78rem;"
+                onmouseover="this.style.background='rgba(255,255,255,0.07)'"
+                onmouseout="this.style.background='transparent'">
+                🚪 <span class="nav-label">Logout</span>
+              </a>
+            </div>
+
+    </aside>

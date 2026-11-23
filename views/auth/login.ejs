@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ur">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login — Alhamd Pharmacy</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <style>
+    :root {
+      --ink: #2c2c2c;
+      --paper: #f4f5f7;
+      --panel: #ffffff;
+      --gold: #1a7f5a;
+      --line: #e3e5e9;
+      --muted: #6c757d;
+      --card: #ffffff;
+      --blue: #1a6fbc;
+      --pink: #8e44ad;
+      --green: #1e7e34;
+      --orange: #c87000;
+      --font-display: "Arial Narrow", "Helvetica Neue Condensed", Impact, sans-serif;
+      --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font-body);
+      background: var(--paper);
+      color: var(--ink);
+      position: relative;
+      font-size: 14px;
+    }
+
+    /* ===== WATERMARK ===== */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background-image: url('/images/logo.png');
+      background-repeat: repeat;
+      background-size: 190px 190px;
+      opacity: 0.03;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .auth-shell { position: relative; z-index: 1; min-height: 100vh; display: flex; }
+
+    /* ===== LEFT — BRAND PANEL ===== */
+    .brand-panel {
+      flex: 1 1 46%;
+      position: relative;
+      background:
+        radial-gradient(circle at 18% 22%, rgba(26,127,90,0.08), transparent 45%),
+        radial-gradient(circle at 85% 78%, rgba(26,111,188,0.07), transparent 50%),
+        linear-gradient(165deg, #eef4f1 0%, #e6ece9 60%, #f4f5f7 100%);
+      color: var(--ink);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 56px 52px;
+      overflow: hidden;
+      border-right: 1px solid var(--line);
+    }
+    .brand-panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,0,0,0.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.025) 1px, transparent 1px);
+      background-size: 38px 38px;
+      pointer-events: none;
+    }
+    .brand-panel::after {
+      content: "\f469";
+      position: absolute;
+      right: -10px;
+      bottom: -40px;
+      font-size: 260px;
+      font-family: "Font Awesome 6 Free";
+      font-weight: 900;
+      color: rgba(26,127,90,0.05);
+      line-height: 1;
+      pointer-events: none;
+    }
+
+    .brand-row { display: flex; align-items: center; gap: 14px; position: relative; z-index: 1; }
+    .brand-mark {
+      font-size: 22px;
+      color: var(--gold);
+      border: 2px solid var(--gold);
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      flex-shrink: 0;
+      background: rgba(26,127,90,0.08);
+    }
+    .brand-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      font-size: 19px;
+      text-transform: uppercase;
+      color: var(--ink);
+    }
+    .brand-sub {
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .brand-hero { position: relative; z-index: 1; }
+    .brand-hero h2 {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 28px;
+      line-height: 1.35;
+      max-width: 380px;
+      margin-bottom: 16px;
+      letter-spacing: 0.3px;
+      color: #1a1a1a;
+    }
+    .brand-hero p {
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 360px;
+      line-height: 1.7;
+    }
+
+    .feature-list { list-style: none; padding: 0; margin: 28px 0 0; position: relative; z-index: 1; }
+    .feature-list li {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13.5px;
+      color: #454b52;
+      margin-bottom: 14px;
+    }
+    .feature-list li:nth-child(1) i { color: var(--gold); }
+    .feature-list li:nth-child(2) i { color: var(--orange); }
+    .feature-list li:nth-child(3) i { color: var(--blue); }
+    .feature-list li:nth-child(4) i { color: #c0392b; }
+    .feature-list i {
+      width: 30px;
+      height: 30px;
+      border-radius: 7px;
+      background: #ffffff;
+      border: 1px solid var(--line);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+
+    .brand-foot { font-size: 11.5px; color: #9aa0a6; position: relative; z-index: 1; }
+
+    /* ===== RIGHT — FORM PANEL ===== */
+    .form-panel {
+      flex: 1 1 54%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+      background: var(--paper);
+      overflow: hidden;
+    }
+    .form-panel::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0,0,0,0.02) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,0.02) 1px, transparent 1px);
+      background-size: 38px 38px;
+      pointer-events: none;
+    }
+
+    .form-wrap {
+      width: 100%;
+      max-width: 400px;
+      position: relative;
+      z-index: 1;
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 40px 36px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+      overflow: hidden;
+    }
+    .form-wrap::before {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--gold), var(--blue));
+    }
+
+    .form-mobile-brand { display: none; text-align: center; margin-bottom: 28px; }
+    .form-mobile-brand .brand-mark { margin: 0 auto 10px; }
+    .form-mobile-brand .brand-title { color: var(--ink); }
+
+    .form-wrap h1 {
+      font-family: var(--font-display);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--ink);
+      margin-bottom: 4px;
+      letter-spacing: 0.3px;
+    }
+    .form-wrap .sub { color: var(--muted); font-size: 14px; margin-bottom: 30px; }
+
+    .form-label {
+      display: block;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--muted);
+      margin-bottom: 7px;
+    }
+
+    .input-icon-group { position: relative; margin-bottom: 18px; }
+    .input-icon-group .form-icon {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .input-icon-group input {
+      width: 100%;
+      height: 48px;
+      padding: 0 44px;
+      border-radius: 5px;
+      border: 1.5px solid var(--line);
+      font-size: 14.5px;
+      background: #fbfbfc;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      font-family: var(--font-body);
+    }
+    .input-icon-group input::placeholder { color: #9aa0a6; }
+    .input-icon-group input:focus {
+      border-color: var(--gold);
+      background: #fff;
+      box-shadow: 0 0 0 4px rgba(26,127,90,0.14);
+    }
+    .input-icon-group .toggle-eye {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+      cursor: pointer;
+      background: none;
+      border: none;
+      padding: 6px;
+      font-size: 14px;
+    }
+    .input-icon-group .toggle-eye:hover { color: var(--gold); }
+
+    .btn-login {
+      width: 100%;
+      height: 48px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, var(--gold), #12583e);
+      border: none;
+      color: #fff;
+      font-weight: 700;
+      font-size: 14.5px;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      box-shadow: 0 10px 22px rgba(26,127,90,0.24);
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      margin-top: 6px;
+    }
+    .btn-login:hover { transform: translateY(-1px); box-shadow: 0 14px 26px rgba(26,127,90,0.32); }
+    .btn-login:active { transform: translateY(0); }
+
+    .alert-pro {
+      border: none;
+      border-radius: 5px;
+      font-size: 13.5px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      border-left: 4px solid;
+    }
+    .alert-danger.alert-pro { background: #fdeceb; color: #8c2a2a; border-color: #d32f2f; }
+    .alert-success.alert-pro { background: #eef6ec; color: #2c5c2f; border-color: var(--green); }
+
+    .form-foot { text-align: center; color: var(--muted); font-size: 12px; margin-top: 28px; }
+
+    @media (max-width: 991px) {
+      .brand-panel { display: none; }
+      .form-panel { flex: 1 1 100%; }
+      .form-mobile-brand { display: block; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="auth-shell">
+
+  <%# ===== LEFT BRAND PANEL (hidden on mobile) ===== %>
+  <div class="brand-panel">
+    <div class="brand-row">
+      <div class="brand-mark"><i class="fa-solid fa-mortar-pestle"></i></div>
+      <div>
+        <div class="brand-title">Rashid Sagir Pharmacy</div>
+        <div class="brand-sub">Point of Sale System</div>
+      </div>
+    </div>
+
+    <div class="brand-hero">
+      <h2>Every medicine, every sale, all in one place.</h2>
+      <p>Medicine inventory, sales and credit customers — all organized and in your control.</p>
+
+      <ul class="feature-list">
+        <li><i class="fa-solid fa-capsules"></i> Full medicine inventory</li>
+        <li><i class="fa-solid fa-receipt"></i> Instant invoices &amp; fee slips</li>
+        <li><i class="fa-solid fa-hand-holding-medical"></i> Credit sales &amp; balances</li>
+      </ul>
+    </div>
+
+    <div class="brand-foot">Rashid Sagir Pharmacy &copy; <%= new Date().getFullYear() %></div>
+  </div>
+
+  <%# ===== RIGHT FORM PANEL ===== %>
+  <div class="form-panel">
+    <div class="form-wrap">
+
+      <div class="form-mobile-brand">
+        <div class="brand-mark"><i class="fa-solid fa-mortar-pestle"></i></div>
+        <div class="brand-title">Rashid Sagir Pharmacy</div>
+      </div>
+
+      <h1>Welcome back</h1>
+      <p class="sub">Sign in to your account.</p>
+
+      <% if (typeof expired !== 'undefined' && expired) { %>
+        <div class="alert alert-danger alert-pro">
+          <i class="fa-solid fa-triangle-exclamation"></i> <span>Your agreement is expired. Please contact support.</span>
+        </div>
+      <% } %>
+
+      <% if (error && error.length > 0) { %>
+        <div class="alert alert-danger alert-pro">
+          <i class="fa-solid fa-circle-exclamation"></i> <span><%= error %></span>
+        </div>
+      <% } %>
+      <% if (success && success.length > 0) { %>
+        <div class="alert alert-success alert-pro">
+          <i class="fa-solid fa-circle-check"></i> <span><%= success %></span>
+        </div>
+      <% } %>
+
+      <form action="/login" method="POST">
+
+        <div class="mb-3">
+          <label for="username" class="form-label">Username</label>
+          <div class="input-icon-group">
+            <i class="fa-solid fa-user form-icon"></i>
+            <input type="text" id="username" name="username"
+                   placeholder="Enter your username"
+                   required autofocus autocomplete="username">
+          </div>
+        </div>
+
+        <div>
+          <label for="password" class="form-label">Password</label>
+          <div class="input-icon-group">
+            <i class="fa-solid fa-lock form-icon"></i>
+            <input type="password" id="password" name="password"
+                   placeholder="••••••••"
+                   required autocomplete="current-password" style="padding-right:44px;">
+            <button class="toggle-eye" type="button" onclick="togglePassword()">
+              <i id="eyeIcon" class="fa-solid fa-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="btn-login">
+          <i class="fa-solid fa-right-to-bracket me-2"></i> Login
+        </button>
+
+      </form>
+
+      <p class="form-foot">Rashid Sagir Pharmacy &copy; <%= new Date().getFullYear() %></p>
+
+    </div>
+  </div>
+
+</div>
+
+<script>
+  function togglePassword() {
+    const input = document.getElementById("password");
+    const icon  = document.getElementById("eyeIcon");
+    if (input.type === "password") {
+      input.type = "text";
+      icon.classList.replace("fa-eye", "fa-eye-slash");
+    } else {
+      input.type = "password";
+      icon.classList.replace("fa-eye-slash", "fa-eye");
+    }
+  }
+</script>
+
+</body>
+</html>

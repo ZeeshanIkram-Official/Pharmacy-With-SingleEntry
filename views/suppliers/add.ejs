@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Add Supplier</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+
+<div class="container mt-4">
+
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>🏭 Add Supplier</h2>
+    <a href="/suppliers" class="btn btn-secondary">Back</a>
+  </div>
+
+  <!-- Flash Error -->
+  <% if (error) { %>
+    <div class="alert alert-danger"><%= error %></div>
+  <% } %>
+
+  <div class="card shadow-sm p-4">
+
+    <form action="/suppliers/add" method="POST">
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Supplier Name *</label>
+          <input type="text" name="name" class="form-control" required>
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Company</label>
+          <input type="text" name="company" class="form-control">
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Phone</label>
+          <input type="text" name="phone" class="form-control">
+        </div>
+
+        <div class="col-md-6 mb-3">
+          <label class="form-label">WhatsApp</label>
+          <input type="text" name="whatsapp" class="form-control">
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Email</label>
+        <input type="email" name="email" class="form-control">
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">Address</label>
+        <textarea name="address" class="form-control" rows="2"></textarea>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6 mb-3">
+          <label class="form-label">Credit Limit</label>
+          <input type="number" name="creditLimit" class="form-control" >
+        </div>
+
+        <!-- <div class="col-md-6 mb-3">
+          <label class="form-label">Balance</label>
+          <input type="number" name="balance" class="form-control" value="0">
+        </div> -->
+
+        <div class="col-md-6 mb-3">
+        <label class="form-label">Payment Terms</label>
+        <select name="paymentTerms" class="form-control">
+          <option value="cash">Cash</option>
+          <option value="credit">Credit</option>
+          <option value="net7">Net 7</option>
+          <option value="net15">Net 15</option>
+          <option value="net30">Net 30</option>
+        </select>
+      </div>
+      </div>
+
+      <!-- <div class="mb-3">
+        <label class="form-label">Payment Terms</label>
+        <select name="paymentTerms" class="form-control">
+          <option value="cash">Cash</option>
+          <option value="credit">Credit</option>
+          <option value="net7">Net 7</option>
+          <option value="net15">Net 15</option>
+          <option value="net30">Net 30</option>
+        </select>
+      </div> -->
+
+      <div class="mb-3">
+        <label class="form-label">Notes</label>
+        <textarea name="notes" class="form-control" rows="2"></textarea>
+      </div>
+
+      <div class="form-check mb-3">
+        <input type="checkbox" name="isActive" class="form-check-input" checked>
+        <label class="form-check-label">Active</label>
+      </div>
+
+      <button type="submit" class="btn btn-primary w-100">Save Supplier</button>
+
+    </form>
+
+  </div>
+</div>
+
+</body>
+</html>
